@@ -19,6 +19,7 @@ import (
 	"time"
 )
 
+//go:embed miniapp/*
 var miniAppFiles embed.FS
 
 // apiHomework is the JSON shape sent to the Mini App frontend.
