@@ -23,8 +23,9 @@ import (
 const pollTimeout = 25 * time.Second
 
 type Config struct {
-	Token string
-	TZ    *time.Location
+	Token      string
+	TZ         *time.Location
+	MiniAppURL string
 }
 
 type Bot struct {
@@ -87,8 +88,33 @@ func main() {
 		log.Fatal(err)
 	}
 
-	b := &Bot{config: Config{Token: token, TZ: tz}, db: db, client: &http.Client{Timeout: pollTimeout + 10*time.Second}}
+	miniAppURL := strings.TrimSpace(os.Getenv("MINI_APP_URL"))
+	port := strings.TrimSpace(os.Getenv("PORT"))
+	if port == "" {
+		port = "8080"
+	}
+
+	b := &Bot{
+		config: Config{Token: token, TZ: tz, MiniAppURL: miniAppURL},
+		db:     db,
+		client: &http.Client{Timeout: pollTimeout + 10*time.Second},
+	}
+
+	if miniAppURL != "" {
+		if err := b.setMenuButton(ctx); err != nil {
+			log.Printf("set menu button: %v", err)
+		}
+	} else {
+		log.Println("MINI_APP_URL not set: skipping Telegram menu button, mini app will only be reachable directly by URL")
+	}
+
 	go b.reminderLoop(ctx)
+	go func() {
+		if err := b.startWebServer(ctx, ":"+port); err != nil {
+			log.Fatalf("web server: %v", err)
+		}
+	}()
+
 	log.Println("bot is running")
 	if err := b.poll(ctx); err != nil {
 		log.Fatal(err)
@@ -212,6 +238,13 @@ func (b *Bot) handleMessage(ctx context.Context, msg *Message) error {
 	text := strings.TrimSpace(msg.Text)
 	switch {
 	case text == "/start" || text == "/help":
+		if b.config.MiniAppURL != "" {
+			err := b.sendWebAppButton(ctx, msg.Chat.ID, helpText, "📋 Открыть список заданий", b.config.MiniAppURL)
+			if err == nil {
+				return nil
+			}
+			log.Printf("send web app button: %v", err)
+		}
 		return b.sendMessage(ctx, msg.Chat.ID, helpText)
 	case text == "/list" || text == "Список":
 		return b.sendHomeworkList(ctx, msg.Chat.ID)

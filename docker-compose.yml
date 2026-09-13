@@ -22,6 +22,10 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?Create .env from .env.example and add the bot token}
       BOT_TIMEZONE: ${BOT_TIMEZONE:-Europe/Moscow}
       DATABASE_URL: postgres://bot_user:change_this_local_password@postgres:5432/homework_bot?sslmode=disable
+      MINI_APP_URL: ${MINI_APP_URL:?Create .env from .env.example and add your HTTPS mini app URL, e.g. https://todolist.ooyble.online}
+      PORT: ${PORT:-8080}
+    ports:
+      - "127.0.0.1:${PORT:-8080}:${PORT:-8080}"
     depends_on:
       postgres:
         condition: service_healthy

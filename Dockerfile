@@ -13,4 +13,5 @@ RUN apk add --no-cache ca-certificates tzdata \
 WORKDIR /app
 COPY --from=build /out/todo-bot /app/todo-bot
 USER bot
+EXPOSE 8080
 ENTRYPOINT ["/app/todo-bot"]

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Задания</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <header class="header">
+    <h1>Задания</h1>
+    <button id="add-toggle" class="icon-button" type="button" aria-label="Добавить задание">+</button>
+  </header>
+
+  <form id="add-form" class="add-form hidden">
+    <label>
+      <span>Предмет</span>
+      <input id="field-subject" type="text" placeholder="Разработка безопасного ПО" required maxlength="200">
+    </label>
+    <label>
+      <span>Задание</span>
+      <input id="field-title" type="text" placeholder="Практическая 1" required maxlength="300">
+    </label>
+    <label>
+      <span>Дедлайн</span>
+      <input id="field-deadline" type="date" required>
+    </label>
+    <div class="form-actions">
+      <button type="button" id="cancel-add" class="button secondary">Отмена</button>
+      <button type="submit" class="button primary">Сохранить</button>
+    </div>
+    <p id="form-error" class="error hidden"></p>
+  </form>
+
+  <p id="status" class="status"></p>
+
+  <ul id="list" class="list"></ul>
+
+  <p id="empty-state" class="empty hidden">Список заданий пуст. Нажмите «+», чтобы добавить первое.</p>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
