@@ -1,8 +1,8 @@
 :root {
-  --void: #06070d;
-  --panel: #0c1024;
-  --panel-2: #121838;
-  --line: #232c56;
+  --void: #170f1c;
+  --panel: #211628;
+  --panel-2: #2a1c33;
+  --line: #3a2a45;
 
   --cyan: #2ef8ff;
   --magenta: #ff36e0;
@@ -12,7 +12,7 @@
   --green: #39ff9e;
 
   --text: #eafcff;
-  --muted: #7d93c9;
+  --muted: #9a8aab;
 }
 
 * {
@@ -179,7 +179,7 @@ body::after {
   padding: 11px 13px;
   border-radius: 10px;
   border: 1px solid var(--line);
-  background: rgba(4, 6, 16, 0.65);
+  background: rgba(12, 7, 15, 0.7);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -269,7 +269,7 @@ body::after {
 /* The main ask: an iridescent, slowly cycling glow around each task's border. */
 .item {
   position: relative;
-  background: linear-gradient(160deg, var(--panel), #0a0d1e);
+  background: linear-gradient(160deg, var(--panel), #120b16);
   border-radius: 14px;
   padding: 14px 16px;
   display: flex;
@@ -361,7 +361,7 @@ body::after {
   height: 34px;
   border-radius: 50%;
   border: 1px solid var(--line);
-  background: rgba(4, 6, 16, 0.6);
+  background: rgba(12, 7, 15, 0.65);
   font-size: 15px;
   cursor: pointer;
   transition: box-shadow 0.15s ease, border-color 0.15s ease;
