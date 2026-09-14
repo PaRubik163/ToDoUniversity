@@ -250,6 +250,10 @@ func (b *Bot) handleMessage(ctx context.Context, msg *Message) error {
 		return b.sendHomeworkList(ctx, msg.Chat.ID)
 	case strings.HasPrefix(text, "/delete") || strings.HasPrefix(text, "Удалить"):
 		return b.deleteHomework(ctx, msg.Chat.ID, text)
+	case strings.HasPrefix(text, "/edit"):
+		return b.editHomeworkText(ctx, msg.Chat.ID, text)
+	case strings.HasPrefix(text, "/remindtime"):
+		return b.setReminderTimeText(ctx, msg.Chat.ID, text)
 	case strings.Contains(strings.ToLower(text), "предмет:"):
 		subject, title, deadline, err := parseHomework(text, b.config.TZ, time.Now().In(b.config.TZ))
 		if err != nil {
@@ -262,7 +266,7 @@ func (b *Bot) handleMessage(ctx context.Context, msg *Message) error {
 		}
 		return b.sendMessage(ctx, msg.Chat.ID, fmt.Sprintf("Записала задание №%d. Напомню за 7 дней до дедлайна и далее каждый день.", id))
 	default:
-		return b.sendMessage(ctx, msg.Chat.ID, "Я понимаю добавление задания, /list и /delete.\n\n"+formatExample)
+		return b.sendMessage(ctx, msg.Chat.ID, "Я понимаю добавление задания, /list, /edit, /delete и /remindtime.\n\n"+formatExample)
 	}
 }
 
@@ -287,6 +291,70 @@ func (b *Bot) deleteHomework(ctx context.Context, chatID int64, text string) err
 		return b.sendMessage(ctx, chatID, "Задание с таким номером не найдено.")
 	}
 	return b.sendMessage(ctx, chatID, "Задание удалено ✅")
+}
+
+func (b *Bot) editHomeworkText(ctx context.Context, chatID int64, text string) error {
+	lines := strings.SplitN(text, "\n", 2)
+	header := strings.Fields(lines[0])
+	if len(header) != 2 {
+		return b.sendMessage(ctx, chatID, "Формат: /edit НОМЕР, затем поля как при создании.\n\n"+editExample)
+	}
+	id, err := strconv.ParseInt(header[1], 10, 64)
+	if err != nil || id < 1 {
+		return b.sendMessage(ctx, chatID, "Номер задания должен быть числом: /edit 3")
+	}
+	if len(lines) < 2 {
+		return b.sendMessage(ctx, chatID, "Не хватает полей после номера.\n\n"+editExample)
+	}
+	subject, title, deadline, err := parseHomework(lines[1], b.config.TZ, time.Now().In(b.config.TZ))
+	if err != nil {
+		return b.sendMessage(ctx, chatID, "Не удалось прочитать задание: "+err.Error()+"\n\n"+editExample)
+	}
+	result, err := b.db.ExecContext(ctx, `UPDATE homework SET subject = $1, title = $2, deadline = $3 WHERE id = $4 AND chat_id = $5`, subject, title, deadline, id, chatID)
+	if err != nil {
+		return err
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return b.sendMessage(ctx, chatID, "Задание с таким номером не найдено.")
+	}
+	return b.sendMessage(ctx, chatID, fmt.Sprintf("Задание №%d обновлено ✅", id))
+}
+
+func (b *Bot) setReminderTimeText(ctx context.Context, chatID int64, text string) error {
+	parts := strings.Fields(text)
+	if len(parts) != 2 {
+		return b.sendMessage(ctx, chatID, "Формат: /remindtime ЧЧ:ММ, например /remindtime 19:00")
+	}
+	hour, minute, err := parseClockTime(parts[1])
+	if err != nil {
+		return b.sendMessage(ctx, chatID, "Не удалось прочитать время: "+err.Error()+"\n\nФормат: /remindtime 19:00")
+	}
+	if err := b.setReminderTime(ctx, chatID, hour, minute); err != nil {
+		return err
+	}
+	return b.sendMessage(ctx, chatID, fmt.Sprintf("Готово, буду напоминать каждый день в %02d:%02d.", hour, minute))
+}
+
+func (b *Bot) setReminderTime(ctx context.Context, chatID int64, hour, minute int) error {
+	_, err := b.db.ExecContext(ctx, `
+		INSERT INTO user_settings (chat_id, reminder_hour, reminder_minute, updated_at)
+		VALUES ($1, $2, $3, now())
+		ON CONFLICT (chat_id) DO UPDATE SET reminder_hour = $2, reminder_minute = $3, updated_at = now()`,
+		chatID, hour, minute)
+	return err
+}
+
+// parseClockTime accepts "19:00" or "9:00" and returns hour/minute in 0-23 / 0-59.
+func parseClockTime(value string) (hour, minute int, err error) {
+	parsed, err := time.Parse("15:04", strings.TrimSpace(value))
+	if err != nil {
+		return 0, 0, errors.New("используйте формат ЧЧ:ММ, например 19:00")
+	}
+	return parsed.Hour(), parsed.Minute(), nil
 }
 
 func (b *Bot) sendHomeworkList(ctx context.Context, chatID int64) error {
@@ -329,24 +397,33 @@ func (b *Bot) sendHomeworkList(ctx context.Context, chatID int64) error {
 }
 
 func (b *Bot) reminderLoop(ctx context.Context) {
-	// Run once on startup, then at the next local midnight and every 24 hours.
-	b.sendDueReminders(ctx)
+	// Tick once per minute, aligned to the start of the minute, and check which
+	// chats have their configured reminder time (default 09:00) right now.
+	now := time.Now()
+	timer := time.NewTimer(time.Until(now.Truncate(time.Minute).Add(time.Minute)))
 	for {
-		now := time.Now().In(b.config.TZ)
-		next := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 5, 0, 0, b.config.TZ)
-		timer := time.NewTimer(time.Until(next))
 		select {
 		case <-ctx.Done():
 			timer.Stop()
 			return
 		case <-timer.C:
-			b.sendDueReminders(ctx)
+			local := time.Now().In(b.config.TZ)
+			b.sendDueReminders(ctx, local.Hour(), local.Minute())
+			timer.Reset(time.Minute)
 		}
 	}
 }
 
-func (b *Bot) sendDueReminders(ctx context.Context) {
-	rows, err := b.db.QueryContext(ctx, `SELECT id, chat_id, subject, title, deadline FROM homework WHERE deadline >= now() - interval '1 day' AND deadline < now() + interval '8 days' ORDER BY deadline`)
+func (b *Bot) sendDueReminders(ctx context.Context, hour, minute int) {
+	rows, err := b.db.QueryContext(ctx, `
+		SELECT h.id, h.chat_id, h.subject, h.title, h.deadline
+		FROM homework h
+		LEFT JOIN user_settings s ON s.chat_id = h.chat_id
+		WHERE COALESCE(s.reminder_hour, 9) = $1
+		  AND COALESCE(s.reminder_minute, 0) = $2
+		  AND h.deadline >= now() - interval '1 day'
+		  AND h.deadline < now() + interval '8 days'
+		ORDER BY h.deadline`, hour, minute)
 	if err != nil {
 		log.Printf("reminder query: %v", err)
 		return
@@ -472,4 +549,6 @@ func calendarDays(from, to time.Time, tz *time.Location) int {
 
 const formatExample = "Формат:\nПредмет: Разработка безопасного ПО\nЗадание: Практическая 1\nДедлайн: 6 октября"
 
-const helpText = "Присылайте задания в таком виде:\n\n" + formatExample + "\n\nКоманды:\n/list — задания по важности\n/delete НОМЕР — удалить выполненное задание"
+const editExample = "Формат:\n/edit 3\nПредмет: Разработка безопасного ПО\nЗадание: Практическая 1\nДедлайн: 6 октября"
+
+const helpText = "Присылайте задания в таком виде:\n\n" + formatExample + "\n\nКоманды:\n/list — задания по важности\n/edit НОМЕР — изменить задание (формат ниже)\n/delete НОМЕР — удалить выполненное задание\n/remindtime ЧЧ:ММ — во сколько напоминать каждый день (по умолчанию 09:00)\n\n" + editExample

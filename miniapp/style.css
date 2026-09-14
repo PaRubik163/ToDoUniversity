@@ -78,6 +78,12 @@ body::after {
   margin-bottom: 22px;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .header h1 {
   font-family: "Orbitron", "Rajdhani", sans-serif;
   font-size: 24px;
@@ -114,6 +120,27 @@ body::after {
 
 .icon-button:active {
   transform: scale(0.92);
+}
+
+.icon-button--ghost {
+  border-color: rgba(139, 92, 246, 0.55);
+  color: var(--violet);
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.3), inset 0 0 8px rgba(139, 92, 246, 0.12);
+  font-size: 19px;
+}
+
+.icon-button--ghost:hover {
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.55), inset 0 0 10px rgba(139, 92, 246, 0.22);
+}
+
+.form-title {
+  margin: 0;
+  font-family: "Orbitron", "Rajdhani", sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--cyan);
+  text-shadow: 0 0 8px rgba(46, 248, 255, 0.45);
 }
 
 .add-form {
@@ -164,7 +191,7 @@ body::after {
 .add-form input:focus,
 .button:focus-visible,
 .icon-button:focus-visible,
-.delete-button:focus-visible {
+.icon-action:focus-visible {
   outline: none;
   border-color: var(--cyan);
   box-shadow: 0 0 0 3px rgba(46, 248, 255, 0.25), 0 0 14px rgba(46, 248, 255, 0.45);
@@ -322,17 +349,35 @@ body::after {
 .item-deadline.soon { color: var(--amber); text-shadow: 0 0 8px rgba(255, 176, 32, 0.5); }
 .item-deadline.later { color: var(--green); text-shadow: 0 0 8px rgba(57, 255, 158, 0.45); }
 
-.delete-button {
+.item-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.icon-action {
   width: 34px;
   height: 34px;
   border-radius: 50%;
   border: 1px solid var(--line);
   background: rgba(4, 6, 16, 0.6);
-  color: var(--red);
-  font-size: 16px;
+  font-size: 15px;
   cursor: pointer;
-  flex-shrink: 0;
   transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.edit-button {
+  color: var(--cyan);
+}
+
+.edit-button:hover {
+  border-color: var(--cyan);
+  box-shadow: 0 0 12px rgba(46, 248, 255, 0.45);
+}
+
+.delete-button {
+  color: var(--red);
 }
 
 .delete-button:hover {

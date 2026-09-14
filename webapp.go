@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
+	"database/sql"
 	"embed"
 	"encoding/hex"
 	"encoding/json"
@@ -53,6 +54,7 @@ func (b *Bot) startWebServer(ctx context.Context, addr string) error {
 	mux.Handle("/", http.FileServer(http.FS(sub)))
 	mux.HandleFunc("/api/homework", b.withAuth(b.handleHomeworkCollection))
 	mux.HandleFunc("/api/homework/", b.withAuth(b.handleHomeworkItem))
+	mux.HandleFunc("/api/settings", b.withAuth(b.handleSettings))
 
 	server := &http.Server{
 		Addr:              addr,
@@ -173,16 +175,23 @@ func (b *Bot) handleHomeworkCollection(w http.ResponseWriter, r *http.Request, u
 }
 
 func (b *Bot) handleHomeworkItem(w http.ResponseWriter, r *http.Request, userID int64) {
-	if r.Method != http.MethodDelete {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 	idStr := strings.TrimPrefix(r.URL.Path, "/api/homework/")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil || id < 1 {
 		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
+	switch r.Method {
+	case http.MethodPut:
+		b.apiUpdateHomework(w, r, userID, id)
+	case http.MethodDelete:
+		b.apiDeleteHomework(w, r, userID, id)
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func (b *Bot) apiDeleteHomework(w http.ResponseWriter, r *http.Request, userID, id int64) {
 	result, err := b.db.ExecContext(r.Context(), "DELETE FROM homework WHERE id = $1 AND chat_id = $2", id, userID)
 	if err != nil {
 		log.Printf("delete homework: %v", err)
@@ -200,6 +209,110 @@ func (b *Bot) handleHomeworkItem(w http.ResponseWriter, r *http.Request, userID 
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (b *Bot) apiUpdateHomework(w http.ResponseWriter, r *http.Request, userID, id int64) {
+	var req createHomeworkRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	req.Subject = strings.TrimSpace(req.Subject)
+	req.Title = strings.TrimSpace(req.Title)
+	if req.Subject == "" || req.Title == "" || req.Deadline == "" {
+		http.Error(w, "subject, title and deadline are required", http.StatusBadRequest)
+		return
+	}
+	deadline, err := time.ParseInLocation("2006-01-02", req.Deadline, b.config.TZ)
+	if err != nil {
+		http.Error(w, "deadline must be in YYYY-MM-DD format", http.StatusBadRequest)
+		return
+	}
+
+	result, err := b.db.ExecContext(r.Context(),
+		`UPDATE homework SET subject = $1, title = $2, deadline = $3 WHERE id = $4 AND chat_id = $5`,
+		req.Subject, req.Title, deadline, id, userID,
+	)
+	if err != nil {
+		log.Printf("update homework: %v", err)
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("update homework rows affected: %v", err)
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	if count == 0 {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+
+	now := time.Now().In(b.config.TZ)
+	writeJSON(w, apiHomework{
+		ID:       id,
+		Subject:  req.Subject,
+		Title:    req.Title,
+		Deadline: deadline.Format("2006-01-02"),
+		DaysLeft: calendarDays(now, deadline, b.config.TZ),
+	})
+}
+
+// apiSettings is the JSON shape for the mini app's reminder-time setting.
+type apiSettings struct {
+	ReminderTime string `json:"reminder_time"` // HH:MM, 24h
+}
+
+func (b *Bot) handleSettings(w http.ResponseWriter, r *http.Request, userID int64) {
+	switch r.Method {
+	case http.MethodGet:
+		b.apiGetSettings(w, r, userID)
+	case http.MethodPut:
+		b.apiPutSettings(w, r, userID)
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func (b *Bot) apiGetSettings(w http.ResponseWriter, r *http.Request, userID int64) {
+	var hour, minute int
+	err := b.db.QueryRowContext(r.Context(),
+		`SELECT reminder_hour, reminder_minute FROM user_settings WHERE chat_id = $1`, userID,
+	).Scan(&hour, &minute)
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			log.Printf("get settings: %v", err)
+			http.Error(w, "database error", http.StatusInternalServerError)
+			return
+		}
+		hour, minute = 9, 0 // default, matches the migration's column default
+	}
+	writeJSON(w, apiSettings{ReminderTime: fmt.Sprintf("%02d:%02d", hour, minute)})
+}
+
+func (b *Bot) apiPutSettings(w http.ResponseWriter, r *http.Request, userID int64) {
+	var req apiSettings
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	parsed, err := time.Parse("15:04", strings.TrimSpace(req.ReminderTime))
+	if err != nil {
+		http.Error(w, "reminder_time must be in HH:MM format", http.StatusBadRequest)
+		return
+	}
+	_, err = b.db.ExecContext(r.Context(), `
+		INSERT INTO user_settings (chat_id, reminder_hour, reminder_minute, updated_at)
+		VALUES ($1, $2, $3, now())
+		ON CONFLICT (chat_id) DO UPDATE SET reminder_hour = $2, reminder_minute = $3, updated_at = now()`,
+		userID, parsed.Hour(), parsed.Minute())
+	if err != nil {
+		log.Printf("put settings: %v", err)
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, apiSettings{ReminderTime: fmt.Sprintf("%02d:%02d", parsed.Hour(), parsed.Minute())})
 }
 
 func (b *Bot) apiListHomework(w http.ResponseWriter, r *http.Request, userID int64) {

@@ -14,10 +14,27 @@
 <div class="app">
   <header class="header">
     <h1>Задания</h1>
-    <button id="add-toggle" class="icon-button" type="button" aria-label="Добавить задание">+</button>
+    <div class="header-actions">
+      <button id="settings-toggle" class="icon-button icon-button--ghost" type="button" aria-label="Настройки напоминаний">⚙</button>
+      <button id="add-toggle" class="icon-button" type="button" aria-label="Добавить задание">+</button>
+    </div>
   </header>
 
+  <form id="settings-form" class="add-form hidden">
+    <p class="form-title">Время напоминаний</p>
+    <label>
+      <span>Напоминать каждый день в</span>
+      <input id="field-remind-time" type="time" required>
+    </label>
+    <div class="form-actions">
+      <button type="button" id="cancel-settings" class="button secondary">Отмена</button>
+      <button type="submit" class="button primary">Сохранить</button>
+    </div>
+    <p id="settings-error" class="error hidden"></p>
+  </form>
+
   <form id="add-form" class="add-form hidden">
+    <p id="form-title" class="form-title">Новое задание</p>
     <label>
       <span>Предмет</span>
       <input id="field-subject" type="text" placeholder="Разработка безопасного ПО" required maxlength="200">
