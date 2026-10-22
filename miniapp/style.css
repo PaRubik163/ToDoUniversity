@@ -1,21 +1,21 @@
 :root {
   color-scheme: light;
-  --paper: #f5f2eb;
-  --paper-deep: #ebe6da;
-  --surface: #fbfaf6;
-  --surface-raised: #fffefa;
-  --ink: #292a24;
-  --muted: #77766c;
-  --line: #d9d3c5;
-  --olive: #59644b;
-  --olive-soft: #e9ede3;
-  --brass: #947b4f;
-  --brass-soft: #f0eadc;
+  --paper: #d3d3d5;
+  --paper-deep: #e7dfd0;
+  --surface: #faf8f2;
+  --surface-raised: #fffdf8;
+  --ink: #000000;
+  --muted: #716f63;
+  --line: #d4cbbb;
+  --olive: #344a37;
+  --olive-soft: #e3e9e0;
+  --brass: #826443;
+  --brass-soft: #eee6d8;
   --wine: #725458;
   --red: #9c5047;
   --red-soft: #f3e7e3;
-  --green: #526447;
-  --green-soft: #e8ede4;
+  --green: #40583f;
+  --green-soft: #e4eae0;
   --shadow: 0 12px 32px rgba(53, 48, 36, 0.07);
 }
 
@@ -28,7 +28,7 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   background:
-    radial-gradient(ellipse at 50% -12%, rgba(255, 255, 255, 0.86), transparent 48%),
+    radial-gradient(ellipse at 50% -22%, rgba(255, 255, 255, 0.86), transparent 12%),
     var(--paper);
   color: var(--ink);
   font-family: "Manrope", "Segoe UI", sans-serif;
@@ -152,8 +152,8 @@ body {
 }
 
 .button:active { transform: translateY(1px); }
-.button.primary { border-color: var(--olive); background: var(--olive); color: #fffefa; }
-.button.primary:hover { border-color: #46513a; background: #46513a; }
+.button.primary { border-color: #263a2d; background: #263a2d; color: #fffdf8; }
+.button.primary:hover { border-color: #1d3024; background: #1d3024; }
 .button.secondary { border-color: var(--line); background: transparent; color: var(--muted); }
 .button.secondary:hover { border-color: var(--muted); color: var(--ink); }
 
@@ -185,9 +185,9 @@ body {
 }
 
 .section-button:hover { border-color: #aaa38f; color: var(--ink); }
-.section-button.active { border-color: var(--brass); background: var(--brass-soft); color: #6f5b38; }
+.section-button.active { border-color: var(--olive); background: var(--olive); color: #fbfaf6; }
 .section-button[data-section="completed"] { border-color: #cdd5c5; color: var(--green); }
-.section-button[data-section="completed"].active { border-color: var(--green); background: var(--green-soft); color: #43523a; }
+.section-button[data-section="completed"].active { border-color: var(--green); background: var(--green); color: #fbfaf6; }
 .section-button[data-section="overdue"] { border-color: #e0c9c3; color: var(--red); }
 .section-button[data-section="overdue"].active { border-color: var(--red); background: var(--red-soft); color: #85443d; }
 
@@ -271,10 +271,10 @@ body {
 .chart-axis-label, .chart-date-label { fill: var(--muted); font: 600 11px "Manrope", sans-serif; }
 .chart-line { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
 .chart-point { stroke-width: 2; }
-.line-chart--week .chart-line { stroke: #8b7947; }
-.line-chart--week .chart-point { fill: #a28b52; stroke: var(--surface); }
-.line-chart--month .chart-line { stroke: #665166; }
-.line-chart--month .chart-point { fill: #806981; stroke: var(--surface); }
+.line-chart--week .chart-line { stroke: #8a6844; }
+.line-chart--week .chart-point { fill: #9b7954; stroke: var(--surface); }
+.line-chart--month .chart-line { stroke: #344a37; }
+.line-chart--month .chart-point { fill: #4d674e; stroke: var(--surface); }
 
 .item {
   position: relative;
@@ -292,7 +292,7 @@ body {
 .item:has(.item-deadline.today)::before, .item:has(.item-deadline.soon)::before { background: var(--brass); }
 .item:has(.item-deadline.later)::before { background: var(--green); }
 .item-body { flex: 1; min-width: 0; padding-left: 4px; }
-.item-subject { margin: 0 0 3px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .055em; text-transform: uppercase; }
+.item-subject { margin: 0 0 3px; color: #826443; font-size: 11px; font-weight: 700; letter-spacing: .055em; text-transform: uppercase; }
 .item-title { margin: 0 0 5px; color: var(--ink); font-size: 15px; font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
 .item-deadline { margin: 0; font-size: 12px; font-weight: 600; }
 .item-completed { margin: 5px 0 0; color: var(--green); font-size: 11px; font-weight: 700; }
