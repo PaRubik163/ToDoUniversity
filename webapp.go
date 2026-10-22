@@ -242,11 +242,21 @@ func (b *Bot) apiSetHomeworkStatus(w http.ResponseWriter, r *http.Request, userI
 }
 
 type apiAnalytics struct {
-	CompletedThisWeek int    `json:"completed_this_week"`
-	Uncompleted       int    `json:"uncompleted"`
-	Overdue           int    `json:"overdue"`
-	WeekStart         string `json:"week_start"`
-	WeekEnd           string `json:"week_end"`
+	CompletedThisWeek  int                  `json:"completed_this_week"`
+	CompletedThisMonth int                  `json:"completed_this_month"`
+	Uncompleted        int                  `json:"uncompleted"`
+	Overdue            int                  `json:"overdue"`
+	WeekStart          string               `json:"week_start"`
+	WeekEnd            string               `json:"week_end"`
+	Month              string               `json:"month"`
+	CurrentMonth       string               `json:"current_month"`
+	WeekDays           []apiDailyCompletion `json:"week_days"`
+	MonthDays          []apiDailyCompletion `json:"month_days"`
+}
+
+type apiDailyCompletion struct {
+	Date  string `json:"date"`
+	Count int    `json:"count"`
 }
 
 func (b *Bot) handleAnalytics(w http.ResponseWriter, r *http.Request, userID int64) {
@@ -255,6 +265,17 @@ func (b *Bot) handleAnalytics(w http.ResponseWriter, r *http.Request, userID int
 		return
 	}
 	now := time.Now().In(b.config.TZ)
+	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, b.config.TZ)
+	monthParam := strings.TrimSpace(r.URL.Query().Get("month"))
+	if monthParam != "" {
+		parsedMonth, err := time.ParseInLocation("2006-01", monthParam, b.config.TZ)
+		if err != nil || parsedMonth.Format("2006-01") != monthParam {
+			http.Error(w, "month must be in YYYY-MM format", http.StatusBadRequest)
+			return
+		}
+		monthStart = time.Date(parsedMonth.Year(), parsedMonth.Month(), 1, 0, 0, 0, 0, b.config.TZ)
+	}
+	monthEnd := monthStart.AddDate(0, 1, 0)
 	daysSinceMonday := (int(now.Weekday()) + 6) % 7
 	weekStart := time.Date(now.Year(), now.Month(), now.Day()-daysSinceMonday, 0, 0, 0, 0, b.config.TZ)
 	weekEnd := weekStart.AddDate(0, 0, 7)
@@ -262,21 +283,76 @@ func (b *Bot) handleAnalytics(w http.ResponseWriter, r *http.Request, userID int
 	var result apiAnalytics
 	result.WeekStart = weekStart.Format("2006-01-02")
 	result.WeekEnd = weekEnd.AddDate(0, 0, -1).Format("2006-01-02")
+	result.Month = monthStart.Format("2006-01")
+	result.CurrentMonth = now.Format("2006-01")
 	err := b.db.QueryRowContext(r.Context(), `
 		SELECT
-			COUNT(*) FILTER (WHERE s.is_completed = TRUE AND s.completed_at >= $2 AND s.completed_at < $3),
 			COUNT(*) FILTER (WHERE COALESCE(s.is_completed, FALSE) = FALSE),
-			COUNT(*) FILTER (WHERE COALESCE(s.is_completed, FALSE) = FALSE AND h.deadline < $4)
+			COUNT(*) FILTER (WHERE COALESCE(s.is_completed, FALSE) = FALSE AND h.deadline < $2)
 		FROM homework h
 		LEFT JOIN homework_status s ON s.homework_id = h.id
-		WHERE h.chat_id = $1`, userID, weekStart, weekEnd, today).Scan(
-		&result.CompletedThisWeek, &result.Uncompleted, &result.Overdue)
+		WHERE h.chat_id = $1`, userID, today).Scan(
+		&result.Uncompleted, &result.Overdue)
 	if err != nil {
 		log.Printf("get analytics: %v", err)
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
+	weekCounts, err := b.completionCounts(r.Context(), userID, weekStart, weekEnd)
+	if err != nil {
+		log.Printf("get weekly completion counts: %v", err)
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	monthCounts, err := b.completionCounts(r.Context(), userID, monthStart, monthEnd)
+	if err != nil {
+		log.Printf("get monthly completion counts: %v", err)
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	result.WeekDays = make([]apiDailyCompletion, 0, 7)
+	for date := weekStart; date.Before(weekEnd); date = date.AddDate(0, 0, 1) {
+		key := date.Format("2006-01-02")
+		count := weekCounts[key]
+		result.WeekDays = append(result.WeekDays, apiDailyCompletion{Date: key, Count: count})
+		result.CompletedThisWeek += count
+	}
+	monthDays := monthEnd.Day()
+	result.MonthDays = make([]apiDailyCompletion, 0, monthDays)
+	for date := monthStart; date.Before(monthEnd); date = date.AddDate(0, 0, 1) {
+		key := date.Format("2006-01-02")
+		count := monthCounts[key]
+		result.MonthDays = append(result.MonthDays, apiDailyCompletion{Date: key, Count: count})
+		result.CompletedThisMonth += count
+	}
 	writeJSON(w, result)
+}
+
+func (b *Bot) completionCounts(ctx context.Context, userID int64, from, to time.Time) (map[string]int, error) {
+	rows, err := b.db.QueryContext(ctx, `
+		SELECT TO_CHAR((s.completed_at AT TIME ZONE $4)::date, 'YYYY-MM-DD'), COUNT(*)
+		FROM homework_status s
+		JOIN homework h ON h.id = s.homework_id
+		WHERE h.chat_id = $1 AND s.is_completed = TRUE
+		  AND s.completed_at >= $2 AND s.completed_at < $3
+		GROUP BY 1`, userID, from, to, b.config.TZ.String())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	counts := make(map[string]int)
+	for rows.Next() {
+		var date string
+		var count int
+		if err := rows.Scan(&date, &count); err != nil {
+			return nil, err
+		}
+		counts[date] = count
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return counts, nil
 }
 
 func (b *Bot) apiDeleteHomework(w http.ResponseWriter, r *http.Request, userID, id int64) {

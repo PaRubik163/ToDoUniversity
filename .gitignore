@@ -1,3 +1,4 @@
 .env
 todo-bot
 coverage.out
+.DS_Store

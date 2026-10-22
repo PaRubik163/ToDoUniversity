@@ -60,16 +60,30 @@
     <button class="section-button active" type="button" data-section="uncompleted">Несделанные</button>
     <button class="section-button" type="button" data-section="completed">Сделанные</button>
     <button class="section-button" type="button" data-section="overdue">Просроченные</button>
-    <button class="section-button" type="button" data-section="analytics">Неделя</button>
+    <button class="section-button" type="button" data-section="analytics">Аналитика</button>
   </nav>
 
-  <section id="analytics" class="analytics hidden" aria-label="Аналитика за неделю">
+  <section id="analytics" class="analytics hidden" aria-label="Аналитика">
+    <div class="month-filter">
+      <button id="month-prev" class="month-arrow" type="button" aria-label="Предыдущий месяц">‹</button>
+      <label><span class="visually-hidden">Месяц аналитики</span><input id="month-picker" type="month"></label>
+      <button id="month-next" class="month-arrow" type="button" aria-label="Следующий месяц">›</button>
+    </div>
     <p id="week-range" class="week-range"></p>
     <div class="analytics-grid">
       <article class="stat-card"><span>Сделано за неделю</span><strong id="stat-completed">0</strong></article>
+      <article class="stat-card stat-card--month"><span>Сделано за месяц</span><strong id="stat-month-completed">0</strong></article>
       <article class="stat-card"><span>Несделано всего</span><strong id="stat-uncompleted">0</strong></article>
-      <article class="stat-card"><span>Просрочено</span><strong id="stat-overdue">0</strong></article>
+      <article class="stat-card stat-card--overdue"><span>Просрочено</span><strong id="stat-overdue">0</strong></article>
     </div>
+    <section class="chart-panel">
+      <h2>Текущая неделя</h2>
+      <div id="week-chart" class="bar-chart bar-chart--week"></div>
+    </section>
+    <section class="chart-panel">
+      <h2 id="month-chart-title">За месяц</h2>
+      <div class="chart-scroll"><div id="month-chart" class="bar-chart bar-chart--month"></div></div>
+    </section>
   </section>
 
   <ul id="list" class="list"></ul>

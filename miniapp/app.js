@@ -11,8 +11,15 @@
   const analyticsEl = document.getElementById("analytics");
   const weekRangeEl = document.getElementById("week-range");
   const statCompletedEl = document.getElementById("stat-completed");
+  const statMonthCompletedEl = document.getElementById("stat-month-completed");
   const statUncompletedEl = document.getElementById("stat-uncompleted");
   const statOverdueEl = document.getElementById("stat-overdue");
+  const monthPickerEl = document.getElementById("month-picker");
+  const monthPrevEl = document.getElementById("month-prev");
+  const monthNextEl = document.getElementById("month-next");
+  const monthChartTitleEl = document.getElementById("month-chart-title");
+  const weekChartEl = document.getElementById("week-chart");
+  const monthChartEl = document.getElementById("month-chart");
 
   const formEl = document.getElementById("add-form");
   const formTitleEl = document.getElementById("form-title");
@@ -32,6 +39,7 @@
   let editingId = null;
   let currentSection = "uncompleted";
   let homeworkItems = [];
+  let selectedMonth = "";
 
   if (tg) {
     tg.ready();
@@ -51,6 +59,14 @@
       renderCurrentSection();
     });
   });
+
+  monthPickerEl.addEventListener("change", function () {
+    if (!monthPickerEl.value) return;
+    selectedMonth = monthPickerEl.value;
+    loadAnalytics();
+  });
+  monthPrevEl.addEventListener("click", function () { shiftSelectedMonth(-1); });
+  monthNextEl.addEventListener("click", function () { shiftSelectedMonth(1); });
 
   addToggleEl.addEventListener("click", function () {
     const wasHidden = formEl.classList.contains("hidden");
@@ -173,7 +189,7 @@
 
   function loadHomework() {
     setStatus("Загрузка…");
-    Promise.all([apiFetch("/api/homework"), apiFetch("/api/analytics")])
+    Promise.all([apiFetch("/api/homework"), fetchAnalytics()])
       .then(function (results) {
         homeworkItems = results[0] || [];
         renderCurrentSection();
@@ -277,9 +293,77 @@
 
   function renderAnalytics(data) {
     statCompletedEl.textContent = data.completed_this_week || 0;
+    statMonthCompletedEl.textContent = data.completed_this_month || 0;
     statUncompletedEl.textContent = data.uncompleted || 0;
     statOverdueEl.textContent = data.overdue || 0;
     weekRangeEl.textContent = "Неделя: " + formatDate(data.week_start) + " — " + formatDate(data.week_end);
+    selectedMonth = data.month;
+    monthPickerEl.value = data.month;
+    monthPickerEl.max = data.current_month;
+    monthNextEl.disabled = data.month >= data.current_month;
+    monthChartTitleEl.textContent = "Выполнено по дням — " + formatMonth(data.month);
+    renderChart(weekChartEl, data.week_days || [], true);
+    renderChart(monthChartEl, data.month_days || [], false);
+  }
+
+  function fetchAnalytics() {
+    const path = selectedMonth ? "/api/analytics?month=" + encodeURIComponent(selectedMonth) : "/api/analytics";
+    return apiFetch(path);
+  }
+
+  function loadAnalytics() {
+    fetchAnalytics()
+      .then(renderAnalytics)
+      .catch(function (err) { setStatus("Не удалось загрузить аналитику: " + err.message); });
+  }
+
+  function shiftSelectedMonth(amount) {
+    if (!selectedMonth) return;
+    const parts = selectedMonth.split("-");
+    const date = new Date(Number(parts[0]), Number(parts[1]) - 1 + amount, 1);
+    selectedMonth = date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0");
+    monthPickerEl.value = selectedMonth;
+    loadAnalytics();
+  }
+
+  function formatMonth(month) {
+    const parts = month.split("-");
+    return new Date(Number(parts[0]), Number(parts[1]) - 1, 1)
+      .toLocaleDateString("ru-RU", { month: "long", year: "numeric" });
+  }
+
+  function renderChart(container, days, showWeekday) {
+    container.innerHTML = "";
+    const max = Math.max(1, ...days.map(function (day) { return day.count; }));
+    days.forEach(function (day) {
+      const dateParts = day.date.split("-").map(Number);
+      const date = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+      const column = document.createElement("div");
+      column.className = "chart-column";
+      column.title = formatDate(day.date) + ": " + day.count;
+
+      const value = document.createElement("span");
+      value.className = "chart-value";
+      value.textContent = day.count;
+
+      const track = document.createElement("div");
+      track.className = "chart-track";
+      const bar = document.createElement("i");
+      bar.className = "chart-bar";
+      bar.style.height = (day.count === 0 ? 3 : Math.max(8, day.count / max * 100)) + "%";
+      track.appendChild(bar);
+
+      const label = document.createElement("span");
+      label.className = "chart-label";
+      label.textContent = showWeekday
+        ? date.toLocaleDateString("ru-RU", { weekday: "short" })
+        : String(date.getDate());
+
+      column.appendChild(value);
+      column.appendChild(track);
+      column.appendChild(label);
+      container.appendChild(column);
+    });
   }
 
   function renderItem(item) {
