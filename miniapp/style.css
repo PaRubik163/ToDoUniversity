@@ -157,7 +157,8 @@ body::after {
 
 .add-form.hidden,
 .empty.hidden,
-.error.hidden {
+.error.hidden,
+.hidden {
   display: none;
 }
 
@@ -266,6 +267,75 @@ body::after {
   gap: 14px;
 }
 
+.sections {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+  margin: 0 0 18px;
+}
+
+.section-button {
+  min-height: 40px;
+  padding: 7px 5px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(33, 22, 40, 0.88);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.1;
+  cursor: pointer;
+}
+
+.section-button.active {
+  color: var(--cyan);
+  border-color: rgba(46, 248, 255, 0.65);
+  box-shadow: 0 0 12px rgba(46, 248, 255, 0.2);
+}
+
+.analytics {
+  margin: 2px 0 20px;
+}
+
+.week-range {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0 0 10px;
+}
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.stat-card {
+  min-height: 92px;
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid rgba(139, 92, 246, 0.45);
+  border-radius: 13px;
+  background: linear-gradient(160deg, var(--panel), #120b16);
+}
+
+.stat-card span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.stat-card strong {
+  color: var(--cyan);
+  font: 800 24px/1 "Orbitron", sans-serif;
+  text-shadow: 0 0 10px rgba(46, 248, 255, 0.45);
+}
+
 /* The main ask: an iridescent, slowly cycling glow around each task's border. */
 .item {
   position: relative;
@@ -344,6 +414,13 @@ body::after {
   margin: 0;
 }
 
+.item-completed {
+  margin: 5px 0 0;
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .item-deadline.overdue { color: var(--red); text-shadow: 0 0 8px rgba(255, 56, 96, 0.55); }
 .item-deadline.today,
 .item-deadline.soon { color: var(--amber); text-shadow: 0 0 8px rgba(255, 176, 32, 0.5); }
@@ -369,6 +446,16 @@ body::after {
 
 .edit-button {
   color: var(--cyan);
+}
+
+.complete-button {
+  color: var(--green);
+}
+
+.complete-button:hover,
+.complete-button.is-completed {
+  border-color: var(--green);
+  box-shadow: 0 0 12px rgba(57, 255, 158, 0.4);
 }
 
 .edit-button:hover {

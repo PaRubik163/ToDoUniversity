@@ -7,6 +7,12 @@
   const listEl = document.getElementById("list");
   const emptyEl = document.getElementById("empty-state");
   const statusEl = document.getElementById("status");
+  const sectionButtons = Array.from(document.querySelectorAll(".section-button"));
+  const analyticsEl = document.getElementById("analytics");
+  const weekRangeEl = document.getElementById("week-range");
+  const statCompletedEl = document.getElementById("stat-completed");
+  const statUncompletedEl = document.getElementById("stat-uncompleted");
+  const statOverdueEl = document.getElementById("stat-overdue");
 
   const formEl = document.getElementById("add-form");
   const formTitleEl = document.getElementById("form-title");
@@ -24,6 +30,8 @@
   const remindTimeInput = document.getElementById("field-remind-time");
 
   let editingId = null;
+  let currentSection = "uncompleted";
+  let homeworkItems = [];
 
   if (tg) {
     tg.ready();
@@ -35,6 +43,14 @@
   } else {
     loadHomework();
   }
+
+  sectionButtons.forEach(function (button) {
+    button.addEventListener("click", function () {
+      currentSection = button.dataset.section;
+      sectionButtons.forEach(function (item) { item.classList.toggle("active", item === button); });
+      renderCurrentSection();
+    });
+  });
 
   addToggleEl.addEventListener("click", function () {
     const wasHidden = formEl.classList.contains("hidden");
@@ -157,9 +173,11 @@
 
   function loadHomework() {
     setStatus("Загрузка…");
-    apiFetch("/api/homework")
-      .then(function (items) {
-        renderList(items || []);
+    Promise.all([apiFetch("/api/homework"), apiFetch("/api/analytics")])
+      .then(function (results) {
+        homeworkItems = results[0] || [];
+        renderCurrentSection();
+        renderAnalytics(results[1] || {});
         setStatus("");
       })
       .catch(function (err) {
@@ -213,10 +231,7 @@
       apiFetch("/api/homework/" + id, { method: "DELETE" })
         .then(function () {
           haptic("notificationSuccess");
-          itemEl.remove();
-          if (!listEl.children.length) {
-            emptyEl.classList.remove("hidden");
-          }
+          loadHomework();
         })
         .catch(function (err) {
           setStatus("Не удалось удалить: " + err.message);
@@ -227,6 +242,7 @@
   function renderList(items) {
     listEl.innerHTML = "";
     if (!items.length) {
+      emptyEl.textContent = emptyMessage();
       emptyEl.classList.remove("hidden");
       return;
     }
@@ -235,6 +251,35 @@
     items.forEach(function (item) {
       listEl.appendChild(renderItem(item));
     });
+  }
+
+  function renderCurrentSection() {
+    const analyticsMode = currentSection === "analytics";
+    analyticsEl.classList.toggle("hidden", !analyticsMode);
+    listEl.classList.toggle("hidden", analyticsMode);
+    if (analyticsMode) {
+      emptyEl.classList.add("hidden");
+      return;
+    }
+    const items = homeworkItems.filter(function (item) {
+      if (currentSection === "completed") return item.completed;
+      if (currentSection === "overdue") return !item.completed && item.days_left < 0;
+      return !item.completed;
+    });
+    renderList(items);
+  }
+
+  function emptyMessage() {
+    if (currentSection === "completed") return "Пока нет сделанных заданий.";
+    if (currentSection === "overdue") return "Просроченных заданий нет.";
+    return "Несделанных заданий нет. Нажмите «+», чтобы добавить.";
+  }
+
+  function renderAnalytics(data) {
+    statCompletedEl.textContent = data.completed_this_week || 0;
+    statUncompletedEl.textContent = data.uncompleted || 0;
+    statOverdueEl.textContent = data.overdue || 0;
+    weekRangeEl.textContent = "Неделя: " + formatDate(data.week_start) + " — " + formatDate(data.week_end);
   }
 
   function renderItem(item) {
@@ -260,8 +305,32 @@
     body.appendChild(title);
     body.appendChild(deadline);
 
+    if (item.completed) {
+      const completedDate = document.createElement("p");
+      completedDate.className = "item-completed";
+      completedDate.textContent = item.completed_at ? "Сделано: " + formatDate(item.completed_at) : "Сделано";
+      body.appendChild(completedDate);
+    }
+
     const actions = document.createElement("div");
     actions.className = "item-actions";
+
+    const completeButton = document.createElement("button");
+    completeButton.className = "icon-action complete-button" + (item.completed ? " is-completed" : "");
+    completeButton.type = "button";
+    completeButton.setAttribute("aria-label", item.completed ? "Вернуть в несделанные" : "Отметить сделанным");
+    completeButton.textContent = item.completed ? "↶" : "✓";
+    completeButton.addEventListener("click", function () {
+      apiFetch("/api/homework/" + item.id + "/status", {
+        method: "PUT",
+        body: JSON.stringify({ completed: !item.completed }),
+      }).then(function () {
+        haptic("notificationSuccess");
+        loadHomework();
+      }).catch(function (err) {
+        setStatus("Не удалось изменить статус: " + err.message);
+      });
+    });
 
     const editButton = document.createElement("button");
     editButton.className = "icon-action edit-button";
@@ -281,12 +350,18 @@
       deleteHomework(item.id, li);
     });
 
-    actions.appendChild(editButton);
+    actions.appendChild(completeButton);
+    if (!item.completed) actions.appendChild(editButton);
     actions.appendChild(deleteButton);
 
     li.appendChild(body);
     li.appendChild(actions);
     return li;
+  }
+
+  function formatDate(dateStr) {
+    const parts = dateStr.split("-");
+    return parts[2] + "." + parts[1] + "." + parts[0];
   }
 
   function deadlineClass(daysLeft) {

@@ -260,7 +260,15 @@ func (b *Bot) handleMessage(ctx context.Context, msg *Message) error {
 			return b.sendMessage(ctx, msg.Chat.ID, "Не удалось прочитать задание: "+err.Error()+"\n\n"+formatExample)
 		}
 		var id int64
-		err = b.db.QueryRowContext(ctx, `INSERT INTO homework (chat_id, subject, title, deadline) VALUES ($1, $2, $3, $4) RETURNING id`, msg.Chat.ID, subject, title, deadline).Scan(&id)
+		err = b.db.QueryRowContext(ctx, `
+			WITH new_homework AS (
+				INSERT INTO homework (chat_id, subject, title, deadline)
+				VALUES ($1, $2, $3, $4)
+				RETURNING id
+			)
+			INSERT INTO homework_status (homework_id, is_completed)
+			SELECT id, FALSE FROM new_homework
+			RETURNING homework_id`, msg.Chat.ID, subject, title, deadline).Scan(&id)
 		if err != nil {
 			return err
 		}
@@ -358,7 +366,12 @@ func parseClockTime(value string) (hour, minute int, err error) {
 }
 
 func (b *Bot) sendHomeworkList(ctx context.Context, chatID int64) error {
-	rows, err := b.db.QueryContext(ctx, `SELECT id, subject, title, deadline FROM homework WHERE chat_id = $1 ORDER BY deadline ASC, id ASC`, chatID)
+	rows, err := b.db.QueryContext(ctx, `
+		SELECT h.id, h.subject, h.title, h.deadline
+		FROM homework h
+		LEFT JOIN homework_status s ON s.homework_id = h.id
+		WHERE h.chat_id = $1 AND COALESCE(s.is_completed, FALSE) = FALSE
+		ORDER BY h.deadline ASC, h.id ASC`, chatID)
 	if err != nil {
 		return err
 	}
@@ -419,9 +432,10 @@ func (b *Bot) sendDueReminders(ctx context.Context, hour, minute int) {
 		SELECT h.id, h.chat_id, h.subject, h.title, h.deadline
 		FROM homework h
 		LEFT JOIN user_settings s ON s.chat_id = h.chat_id
+		LEFT JOIN homework_status hs ON hs.homework_id = h.id
 		WHERE COALESCE(s.reminder_hour, 9) = $1
 		  AND COALESCE(s.reminder_minute, 0) = $2
-		  AND h.deadline >= now() - interval '1 day'
+		  AND COALESCE(hs.is_completed, FALSE) = FALSE
 		  AND h.deadline < now() + interval '8 days'
 		ORDER BY h.deadline`, hour, minute)
 	if err != nil {
@@ -438,7 +452,7 @@ func (b *Bot) sendDueReminders(ctx context.Context, hour, minute int) {
 			continue
 		}
 		days := calendarDays(time.Now().In(b.config.TZ), item.Deadline.In(b.config.TZ), b.config.TZ)
-		if days < 0 || days > 7 {
+		if days > 7 {
 			continue
 		}
 		result, err := b.db.ExecContext(ctx, `INSERT INTO reminder_log (homework_id, reminder_date) VALUES ($1, $2) ON CONFLICT DO NOTHING`, item.ID, today)
@@ -457,7 +471,16 @@ func (b *Bot) sendDueReminders(ctx context.Context, hour, minute int) {
 			word = "дня"
 		}
 		message := fmt.Sprintf("⏰ Напоминание\n%s — %s\nДо дедлайна осталось %d %s (%s).", item.Subject, item.Title, days, word, item.Deadline.In(b.config.TZ).Format("02.01.2006"))
-		if days == 0 {
+		if days < 0 {
+			overdueDays := -days
+			overdueWord := "дней"
+			if overdueDays == 1 {
+				overdueWord = "день"
+			} else if overdueDays >= 2 && overdueDays <= 4 {
+				overdueWord = "дня"
+			}
+			message = fmt.Sprintf("⚠️ Дедлайн истек %d %s назад\n%s — %s (дедлайн: %s).", overdueDays, overdueWord, item.Subject, item.Title, item.Deadline.In(b.config.TZ).Format("02.01.2006"))
+		} else if days == 0 {
 			message = fmt.Sprintf("⏰ Дедлайн сегодня!\n%s — %s", item.Subject, item.Title)
 		}
 		if err := b.sendMessage(ctx, chatID, message); err != nil {

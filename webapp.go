@@ -25,11 +25,13 @@ var miniAppFiles embed.FS
 
 // apiHomework is the JSON shape sent to the Mini App frontend.
 type apiHomework struct {
-	ID       int64  `json:"id"`
-	Subject  string `json:"subject"`
-	Title    string `json:"title"`
-	Deadline string `json:"deadline"` // YYYY-MM-DD
-	DaysLeft int    `json:"days_left"`
+	ID          int64  `json:"id"`
+	Subject     string `json:"subject"`
+	Title       string `json:"title"`
+	Deadline    string `json:"deadline"` // YYYY-MM-DD
+	DaysLeft    int    `json:"days_left"`
+	Completed   bool   `json:"completed"`
+	CompletedAt string `json:"completed_at,omitempty"`
 }
 
 type createHomeworkRequest struct {
@@ -55,6 +57,7 @@ func (b *Bot) startWebServer(ctx context.Context, addr string) error {
 	mux.HandleFunc("/api/homework", b.withAuth(b.handleHomeworkCollection))
 	mux.HandleFunc("/api/homework/", b.withAuth(b.handleHomeworkItem))
 	mux.HandleFunc("/api/settings", b.withAuth(b.handleSettings))
+	mux.HandleFunc("/api/analytics", b.withAuth(b.handleAnalytics))
 
 	server := &http.Server{
 		Addr:              addr,
@@ -176,6 +179,20 @@ func (b *Bot) handleHomeworkCollection(w http.ResponseWriter, r *http.Request, u
 
 func (b *Bot) handleHomeworkItem(w http.ResponseWriter, r *http.Request, userID int64) {
 	idStr := strings.TrimPrefix(r.URL.Path, "/api/homework/")
+	if strings.HasSuffix(idStr, "/status") {
+		idStr = strings.TrimSuffix(idStr, "/status")
+		id, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil || id < 1 {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		if r.Method != http.MethodPut {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		b.apiSetHomeworkStatus(w, r, userID, id)
+		return
+	}
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil || id < 1 {
 		http.Error(w, "invalid id", http.StatusBadRequest)
@@ -189,6 +206,77 @@ func (b *Bot) handleHomeworkItem(w http.ResponseWriter, r *http.Request, userID 
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+func (b *Bot) apiSetHomeworkStatus(w http.ResponseWriter, r *http.Request, userID, id int64) {
+	var req struct {
+		Completed bool `json:"completed"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	result, err := b.db.ExecContext(r.Context(), `
+		INSERT INTO homework_status (homework_id, is_completed, completed_at)
+		SELECT id, $1, CASE WHEN $1 THEN now() ELSE NULL END
+		FROM homework WHERE id = $2 AND chat_id = $3
+		ON CONFLICT (homework_id) DO UPDATE SET
+			is_completed = EXCLUDED.is_completed,
+			completed_at = EXCLUDED.completed_at`, req.Completed, id, userID)
+	if err != nil {
+		log.Printf("set homework status: %v", err)
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("set homework status rows affected: %v", err)
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	if count == 0 {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	writeJSON(w, map[string]bool{"completed": req.Completed})
+}
+
+type apiAnalytics struct {
+	CompletedThisWeek int    `json:"completed_this_week"`
+	Uncompleted       int    `json:"uncompleted"`
+	Overdue           int    `json:"overdue"`
+	WeekStart         string `json:"week_start"`
+	WeekEnd           string `json:"week_end"`
+}
+
+func (b *Bot) handleAnalytics(w http.ResponseWriter, r *http.Request, userID int64) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	now := time.Now().In(b.config.TZ)
+	daysSinceMonday := (int(now.Weekday()) + 6) % 7
+	weekStart := time.Date(now.Year(), now.Month(), now.Day()-daysSinceMonday, 0, 0, 0, 0, b.config.TZ)
+	weekEnd := weekStart.AddDate(0, 0, 7)
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, b.config.TZ)
+	var result apiAnalytics
+	result.WeekStart = weekStart.Format("2006-01-02")
+	result.WeekEnd = weekEnd.AddDate(0, 0, -1).Format("2006-01-02")
+	err := b.db.QueryRowContext(r.Context(), `
+		SELECT
+			COUNT(*) FILTER (WHERE s.is_completed = TRUE AND s.completed_at >= $2 AND s.completed_at < $3),
+			COUNT(*) FILTER (WHERE COALESCE(s.is_completed, FALSE) = FALSE),
+			COUNT(*) FILTER (WHERE COALESCE(s.is_completed, FALSE) = FALSE AND h.deadline < $4)
+		FROM homework h
+		LEFT JOIN homework_status s ON s.homework_id = h.id
+		WHERE h.chat_id = $1`, userID, weekStart, weekEnd, today).Scan(
+		&result.CompletedThisWeek, &result.Uncompleted, &result.Overdue)
+	if err != nil {
+		log.Printf("get analytics: %v", err)
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, result)
 }
 
 func (b *Bot) apiDeleteHomework(w http.ResponseWriter, r *http.Request, userID, id int64) {
@@ -316,7 +404,13 @@ func (b *Bot) apiPutSettings(w http.ResponseWriter, r *http.Request, userID int6
 }
 
 func (b *Bot) apiListHomework(w http.ResponseWriter, r *http.Request, userID int64) {
-	rows, err := b.db.QueryContext(r.Context(), `SELECT id, subject, title, deadline FROM homework WHERE chat_id = $1 ORDER BY deadline ASC, id ASC`, userID)
+	rows, err := b.db.QueryContext(r.Context(), `
+		SELECT h.id, h.subject, h.title, h.deadline,
+			COALESCE(s.is_completed, FALSE), s.completed_at
+		FROM homework h
+		LEFT JOIN homework_status s ON s.homework_id = h.id
+		WHERE h.chat_id = $1
+		ORDER BY COALESCE(s.is_completed, FALSE), h.deadline ASC, h.id ASC`, userID)
 	if err != nil {
 		log.Printf("list homework: %v", err)
 		http.Error(w, "database error", http.StatusInternalServerError)
@@ -328,19 +422,26 @@ func (b *Bot) apiListHomework(w http.ResponseWriter, r *http.Request, userID int
 	items := make([]apiHomework, 0)
 	for rows.Next() {
 		var item homework
-		if err := rows.Scan(&item.ID, &item.Subject, &item.Title, &item.Deadline); err != nil {
+		var completed bool
+		var completedAt sql.NullTime
+		if err := rows.Scan(&item.ID, &item.Subject, &item.Title, &item.Deadline, &completed, &completedAt); err != nil {
 			log.Printf("scan homework: %v", err)
 			http.Error(w, "database error", http.StatusInternalServerError)
 			return
 		}
 		deadline := item.Deadline.In(b.config.TZ)
-		items = append(items, apiHomework{
-			ID:       item.ID,
-			Subject:  item.Subject,
-			Title:    item.Title,
-			Deadline: deadline.Format("2006-01-02"),
-			DaysLeft: calendarDays(now, deadline, b.config.TZ),
-		})
+		apiItem := apiHomework{
+			ID:        item.ID,
+			Subject:   item.Subject,
+			Title:     item.Title,
+			Deadline:  deadline.Format("2006-01-02"),
+			DaysLeft:  calendarDays(now, deadline, b.config.TZ),
+			Completed: completed,
+		}
+		if completedAt.Valid {
+			apiItem.CompletedAt = completedAt.Time.In(b.config.TZ).Format("2006-01-02")
+		}
+		items = append(items, apiItem)
 	}
 	if err := rows.Err(); err != nil {
 		log.Printf("list homework rows: %v", err)
@@ -370,7 +471,14 @@ func (b *Bot) apiCreateHomework(w http.ResponseWriter, r *http.Request, userID i
 
 	var id int64
 	err = b.db.QueryRowContext(r.Context(),
-		`INSERT INTO homework (chat_id, subject, title, deadline) VALUES ($1, $2, $3, $4) RETURNING id`,
+		`WITH new_homework AS (
+			INSERT INTO homework (chat_id, subject, title, deadline)
+			VALUES ($1, $2, $3, $4)
+			RETURNING id
+		)
+		INSERT INTO homework_status (homework_id, is_completed)
+		SELECT id, FALSE FROM new_homework
+		RETURNING homework_id`,
 		userID, req.Subject, req.Title, deadline,
 	).Scan(&id)
 	if err != nil {

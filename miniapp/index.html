@@ -56,9 +56,25 @@
 
   <p id="status" class="status"></p>
 
+  <nav class="sections" aria-label="Разделы заданий">
+    <button class="section-button active" type="button" data-section="uncompleted">Несделанные</button>
+    <button class="section-button" type="button" data-section="completed">Сделанные</button>
+    <button class="section-button" type="button" data-section="overdue">Просроченные</button>
+    <button class="section-button" type="button" data-section="analytics">Неделя</button>
+  </nav>
+
+  <section id="analytics" class="analytics hidden" aria-label="Аналитика за неделю">
+    <p id="week-range" class="week-range"></p>
+    <div class="analytics-grid">
+      <article class="stat-card"><span>Сделано за неделю</span><strong id="stat-completed">0</strong></article>
+      <article class="stat-card"><span>Несделано всего</span><strong id="stat-uncompleted">0</strong></article>
+      <article class="stat-card"><span>Просрочено</span><strong id="stat-overdue">0</strong></article>
+    </div>
+  </section>
+
   <ul id="list" class="list"></ul>
 
-  <p id="empty-state" class="empty hidden">Список заданий пуст. Нажмите «+», чтобы добавить первое.</p>
+  <p id="empty-state" class="empty hidden"></p>
 </div>
 
 <script src="app.js"></script>
