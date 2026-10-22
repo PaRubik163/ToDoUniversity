@@ -13,71 +13,78 @@
 <body>
 <div class="app">
   <header class="header">
-    <h1>Задания</h1>
+    <h1 id="app-title" data-i18n="appTitle">Задания</h1>
     <div class="header-actions">
-      <button id="settings-toggle" class="icon-button icon-button--ghost" type="button" aria-label="Настройки напоминаний">⚙</button>
-      <button id="add-toggle" class="icon-button" type="button" aria-label="Добавить задание">+</button>
+      <button id="settings-toggle" class="icon-button icon-button--ghost" type="button" aria-label="Настройки" data-i18n-aria="settingsAria">⚙</button>
+      <button id="add-toggle" class="icon-button" type="button" aria-label="Добавить задание" data-i18n-aria="addTaskAria">+</button>
     </div>
   </header>
 
   <form id="settings-form" class="add-form hidden">
-    <p class="form-title">Время напоминаний</p>
+    <p class="form-title" data-i18n="settingsTitle">Настройки</p>
     <label>
-      <span>Напоминать каждый день в</span>
+      <span data-i18n="remindDailyAt">Напоминать каждый день в</span>
       <input id="field-remind-time" type="time" required>
     </label>
+    <div class="language-setting">
+      <span class="language-label" data-i18n="languageLabel">Язык</span>
+      <div class="language-picker" role="group" aria-label="Язык интерфейса" data-i18n-aria="languageLabel">
+        <button id="language-ru" class="language-option" type="button" data-language="ru">Русский</button>
+        <button id="language-en" class="language-option" type="button" data-language="en">English</button>
+      </div>
+    </div>
     <div class="form-actions">
-      <button type="button" id="cancel-settings" class="button secondary">Отмена</button>
-      <button type="submit" class="button primary">Сохранить</button>
+      <button type="button" id="cancel-settings" class="button secondary" data-i18n="cancel">Отмена</button>
+      <button type="submit" class="button primary" data-i18n="save">Сохранить</button>
     </div>
     <p id="settings-error" class="error hidden"></p>
   </form>
 
   <form id="add-form" class="add-form hidden">
-    <p id="form-title" class="form-title">Новое задание</p>
+    <p id="form-title" class="form-title" data-i18n="newTask">Новое задание</p>
     <label>
-      <span>Предмет</span>
-      <input id="field-subject" type="text" placeholder="Разработка безопасного ПО" required maxlength="200">
+      <span data-i18n="subject">Предмет</span>
+      <input id="field-subject" type="text" placeholder="Разработка безопасного ПО" data-i18n-placeholder="subjectPlaceholder" required maxlength="200">
     </label>
     <label>
-      <span>Задание</span>
-      <input id="field-title" type="text" placeholder="Практическая 1" required maxlength="300">
+      <span data-i18n="task">Задание</span>
+      <input id="field-title" type="text" placeholder="Практическая 1" data-i18n-placeholder="taskPlaceholder" required maxlength="300">
     </label>
     <label>
-      <span>Дедлайн</span>
+      <span data-i18n="deadline">Дедлайн</span>
       <input id="field-deadline" type="date" required>
     </label>
     <div class="form-actions">
-      <button type="button" id="cancel-add" class="button secondary">Отмена</button>
-      <button type="submit" class="button primary">Сохранить</button>
+      <button type="button" id="cancel-add" class="button secondary" data-i18n="cancel">Отмена</button>
+      <button type="submit" class="button primary" data-i18n="save">Сохранить</button>
     </div>
     <p id="form-error" class="error hidden"></p>
   </form>
 
   <p id="status" class="status"></p>
 
-  <nav class="sections" aria-label="Разделы заданий">
-    <button class="section-button active" type="button" data-section="uncompleted">Несделанные</button>
-    <button class="section-button" type="button" data-section="completed">Сделанные</button>
-    <button class="section-button" type="button" data-section="overdue">Просроченные</button>
-    <button class="section-button" type="button" data-section="analytics">Аналитика</button>
+  <nav class="sections" aria-label="Разделы заданий" data-i18n-aria="sectionsAria">
+    <button class="section-button active" type="button" data-section="uncompleted" data-i18n="uncompleted">Несделанные</button>
+    <button class="section-button" type="button" data-section="completed" data-i18n="completed">Сделанные</button>
+    <button class="section-button" type="button" data-section="overdue" data-i18n="overdue">Просроченные</button>
+    <button class="section-button" type="button" data-section="analytics" data-i18n="analytics">Аналитика</button>
   </nav>
 
-  <section id="analytics" class="analytics hidden" aria-label="Аналитика">
+  <section id="analytics" class="analytics hidden" aria-label="Аналитика" data-i18n-aria="analytics">
     <div class="month-filter">
-      <button id="month-prev" class="month-arrow" type="button" aria-label="Предыдущий месяц">‹</button>
-      <label><span class="visually-hidden">Месяц аналитики</span><input id="month-picker" type="month"></label>
-      <button id="month-next" class="month-arrow" type="button" aria-label="Следующий месяц">›</button>
+      <button id="month-prev" class="month-arrow" type="button" aria-label="Предыдущий месяц" data-i18n-aria="previousMonth">‹</button>
+      <label><span class="visually-hidden" data-i18n="analyticsMonth">Месяц аналитики</span><input id="month-picker" type="month"></label>
+      <button id="month-next" class="month-arrow" type="button" aria-label="Следующий месяц" data-i18n-aria="nextMonth">›</button>
     </div>
     <p id="week-range" class="week-range"></p>
     <div class="analytics-grid">
-      <article class="stat-card"><span>Сделано за неделю</span><strong id="stat-completed">0</strong></article>
-      <article class="stat-card stat-card--month"><span>Сделано за месяц</span><strong id="stat-month-completed">0</strong></article>
-      <article class="stat-card"><span>Несделано всего</span><strong id="stat-uncompleted">0</strong></article>
-      <article class="stat-card stat-card--overdue"><span>Просрочено</span><strong id="stat-overdue">0</strong></article>
+      <article class="stat-card"><span data-i18n="doneThisWeek">Сделано за неделю</span><strong id="stat-completed">0</strong></article>
+      <article class="stat-card stat-card--month"><span data-i18n="doneThisMonth">Сделано за месяц</span><strong id="stat-month-completed">0</strong></article>
+      <article class="stat-card"><span data-i18n="uncompletedTotal">Несделано всего</span><strong id="stat-uncompleted">0</strong></article>
+      <article class="stat-card stat-card--overdue"><span data-i18n="overdueTotal">Просрочено</span><strong id="stat-overdue">0</strong></article>
     </div>
     <section class="chart-panel">
-      <h2>Текущая неделя</h2>
+      <h2 data-i18n="currentWeek">Текущая неделя</h2>
       <div id="week-chart" class="line-chart line-chart--week"></div>
     </section>
     <section class="chart-panel">

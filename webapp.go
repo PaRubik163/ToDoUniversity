@@ -426,6 +426,7 @@ func (b *Bot) apiUpdateHomework(w http.ResponseWriter, r *http.Request, userID, 
 // apiSettings is the JSON shape for the mini app's reminder-time setting.
 type apiSettings struct {
 	ReminderTime string `json:"reminder_time"` // HH:MM, 24h
+	Language     string `json:"language"`
 }
 
 func (b *Bot) handleSettings(w http.ResponseWriter, r *http.Request, userID int64) {
@@ -441,18 +442,19 @@ func (b *Bot) handleSettings(w http.ResponseWriter, r *http.Request, userID int6
 
 func (b *Bot) apiGetSettings(w http.ResponseWriter, r *http.Request, userID int64) {
 	var hour, minute int
+	var language string
 	err := b.db.QueryRowContext(r.Context(),
-		`SELECT reminder_hour, reminder_minute FROM user_settings WHERE chat_id = $1`, userID,
-	).Scan(&hour, &minute)
+		`SELECT reminder_hour, reminder_minute, language FROM user_settings WHERE chat_id = $1`, userID,
+	).Scan(&hour, &minute, &language)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
 			log.Printf("get settings: %v", err)
 			http.Error(w, "database error", http.StatusInternalServerError)
 			return
 		}
-		hour, minute = 9, 0 // default, matches the migration's column default
+		hour, minute, language = 9, 0, "ru" // defaults match the migration
 	}
-	writeJSON(w, apiSettings{ReminderTime: fmt.Sprintf("%02d:%02d", hour, minute)})
+	writeJSON(w, apiSettings{ReminderTime: fmt.Sprintf("%02d:%02d", hour, minute), Language: language})
 }
 
 func (b *Bot) apiPutSettings(w http.ResponseWriter, r *http.Request, userID int64) {
@@ -466,17 +468,35 @@ func (b *Bot) apiPutSettings(w http.ResponseWriter, r *http.Request, userID int6
 		http.Error(w, "reminder_time must be in HH:MM format", http.StatusBadRequest)
 		return
 	}
+	req.Language = strings.TrimSpace(req.Language)
+	if req.Language != "" && req.Language != "ru" && req.Language != "en" {
+		http.Error(w, "language must be ru or en", http.StatusBadRequest)
+		return
+	}
+	language := req.Language
+	if language == "" {
+		err := b.db.QueryRowContext(r.Context(), `SELECT language FROM user_settings WHERE chat_id = $1`, userID).Scan(&language)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			log.Printf("get language setting: %v", err)
+			http.Error(w, "database error", http.StatusInternalServerError)
+			return
+		}
+		if errors.Is(err, sql.ErrNoRows) {
+			language = "ru"
+		}
+	}
 	_, err = b.db.ExecContext(r.Context(), `
-		INSERT INTO user_settings (chat_id, reminder_hour, reminder_minute, updated_at)
-		VALUES ($1, $2, $3, now())
-		ON CONFLICT (chat_id) DO UPDATE SET reminder_hour = $2, reminder_minute = $3, updated_at = now()`,
-		userID, parsed.Hour(), parsed.Minute())
+		INSERT INTO user_settings (chat_id, reminder_hour, reminder_minute, language, updated_at)
+		VALUES ($1, $2, $3, $4, now())
+		ON CONFLICT (chat_id) DO UPDATE SET
+			reminder_hour = $2, reminder_minute = $3, language = $4, updated_at = now()`,
+		userID, parsed.Hour(), parsed.Minute(), language)
 	if err != nil {
 		log.Printf("put settings: %v", err)
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, apiSettings{ReminderTime: fmt.Sprintf("%02d:%02d", parsed.Hour(), parsed.Minute())})
+	writeJSON(w, apiSettings{ReminderTime: fmt.Sprintf("%02d:%02d", parsed.Hour(), parsed.Minute()), Language: language})
 }
 
 func (b *Bot) apiListHomework(w http.ResponseWriter, r *http.Request, userID int64) {

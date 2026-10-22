@@ -1,6 +1,59 @@
 (function () {
   "use strict";
 
+  const translations = {
+    ru: {
+      appTitle: "Задания", settingsAria: "Настройки", addTaskAria: "Добавить задание",
+      settingsTitle: "Настройки", remindDailyAt: "Напоминать каждый день в", languageLabel: "Язык",
+      cancel: "Отмена", save: "Сохранить", saveChanges: "Сохранить изменения",
+      newTask: "Новое задание", subject: "Предмет", subjectPlaceholder: "Разработка безопасного ПО",
+      task: "Задание", taskPlaceholder: "Практическая 1", deadline: "Дедлайн",
+      sectionsAria: "Разделы заданий", uncompleted: "Несделанные", completed: "Сделанные",
+      overdue: "Просроченные", analytics: "Аналитика", previousMonth: "Предыдущий месяц",
+      nextMonth: "Следующий месяц", analyticsMonth: "Месяц аналитики", doneThisWeek: "Сделано за неделю",
+      doneThisMonth: "Сделано за месяц", uncompletedTotal: "Несделано всего", overdueTotal: "Просрочено",
+      currentWeek: "Текущая неделя", loading: "Загрузка…",
+      openTelegram: "Откройте это приложение через Telegram, чтобы увидеть свои задания.",
+      fillAll: "Заполните все поля.", timeRequired: "Укажите время.",
+      loadTasksError: "Не удалось загрузить список: ", loadAnalyticsError: "Не удалось загрузить аналитику: ",
+      deleteError: "Не удалось удалить: ", statusError: "Не удалось изменить статус: ",
+      deleteConfirm: "Удалить это задание?", noCompleted: "Пока нет сделанных заданий.",
+      noOverdue: "Просроченных заданий нет.", noUncompleted: "Несделанных заданий нет. Нажмите «+», чтобы добавить.",
+      editTask: "Редактирование задания №{id}", doneDate: "Сделано: {date}", done: "Сделано",
+      undoDone: "Вернуть в несделанные", markDone: "Отметить сделанным", overdueBy: "просрочено на {days} {unit}",
+      editTaskAria: "Редактировать", deleteTaskAria: "Удалить",
+      dueToday: "срок сегодня", daysLeft: "осталось {days} {unit}", dayUnit: "дней", dayUnitOne: "день", dayUnitFew: "дня",
+      weekRange: "Неделя: {from} — {to}", monthGraphTitle: "Выполнено по дням — {month}",
+      weekChartAria: "Выполненные задания за текущую неделю", monthChartAria: "Выполненные задания за выбранный месяц",
+      chartCount: "{date}: {count}"
+    },
+    en: {
+      appTitle: "Tasks", settingsAria: "Settings", addTaskAria: "Add task",
+      settingsTitle: "Settings", remindDailyAt: "Remind me every day at", languageLabel: "Language",
+      cancel: "Cancel", save: "Save", saveChanges: "Save changes",
+      newTask: "New task", subject: "Subject", subjectPlaceholder: "Secure Software Development",
+      task: "Task", taskPlaceholder: "Assignment 1", deadline: "Deadline",
+      sectionsAria: "Task sections", uncompleted: "To do", completed: "Done",
+      overdue: "Overdue", analytics: "Analytics", previousMonth: "Previous month",
+      nextMonth: "Next month", analyticsMonth: "Analytics month", doneThisWeek: "Done this week",
+      doneThisMonth: "Done this month", uncompletedTotal: "To do", overdueTotal: "Overdue",
+      currentWeek: "Current week", loading: "Loading…",
+      openTelegram: "Open this app through Telegram to see your tasks.",
+      fillAll: "Please fill in every field.", timeRequired: "Please choose a reminder time.",
+      loadTasksError: "Could not load tasks: ", loadAnalyticsError: "Could not load analytics: ",
+      deleteError: "Could not delete task: ", statusError: "Could not update task: ",
+      deleteConfirm: "Delete this task?", noCompleted: "No completed tasks yet.",
+      noOverdue: "There are no overdue tasks.", noUncompleted: "No tasks to do. Tap “+” to add one.",
+      editTask: "Edit task №{id}", doneDate: "Completed: {date}", done: "Completed",
+      undoDone: "Move back to to do", markDone: "Mark as done", overdueBy: "overdue by {days} {unit}",
+      editTaskAria: "Edit task", deleteTaskAria: "Delete task",
+      dueToday: "due today", daysLeft: "{days} {unit} left", dayUnit: "days", dayUnitOne: "day", dayUnitFew: "days",
+      weekRange: "Week: {from} — {to}", monthGraphTitle: "Completed by day — {month}",
+      weekChartAria: "Tasks completed this week", monthChartAria: "Tasks completed in selected month",
+      chartCount: "{date}: {count}"
+    }
+  };
+
   const tg = window.Telegram && window.Telegram.WebApp;
   const initData = tg ? tg.initData : "";
 
@@ -35,11 +88,16 @@
   const settingsErrorEl = document.getElementById("settings-error");
   const cancelSettingsEl = document.getElementById("cancel-settings");
   const remindTimeInput = document.getElementById("field-remind-time");
+  const languageButtons = Array.from(document.querySelectorAll(".language-option"));
 
   let editingId = null;
   let currentSection = "uncompleted";
   let homeworkItems = [];
   let selectedMonth = "";
+  let language = "ru";
+  let settingsOriginalLanguage = "ru";
+  let languageTouched = false;
+  let analyticsData = null;
 
   if (tg) {
     tg.ready();
@@ -47,7 +105,7 @@
   }
 
   if (!initData) {
-    setStatus("Откройте это приложение через Telegram, чтобы увидеть свои задания.");
+    setStatus(t("openTelegram"));
   } else {
     loadHomework();
   }
@@ -67,6 +125,13 @@
   });
   monthPrevEl.addEventListener("click", function () { shiftSelectedMonth(-1); });
   monthNextEl.addEventListener("click", function () { shiftSelectedMonth(1); });
+  languageButtons.forEach(function (button) {
+    button.addEventListener("click", function () {
+      languageTouched = true;
+      language = button.dataset.language;
+      applyLanguage();
+    });
+  });
 
   addToggleEl.addEventListener("click", function () {
     const wasHidden = formEl.classList.contains("hidden");
@@ -92,7 +157,7 @@
       deadline: deadlineInput.value,
     };
     if (!payload.subject || !payload.title || !payload.deadline) {
-      showFormError("Заполните все поля.");
+      showFormError(t("fillAll"));
       return;
     }
 
@@ -115,6 +180,9 @@
 
   cancelSettingsEl.addEventListener("click", function () {
     hideSettingsError();
+    language = settingsOriginalLanguage;
+    languageTouched = false;
+    applyLanguage();
     settingsFormEl.classList.add("hidden");
   });
 
@@ -122,18 +190,18 @@
     event.preventDefault();
     hideSettingsError();
     if (!remindTimeInput.value) {
-      showSettingsError("Укажите время.");
+      showSettingsError(t("timeRequired"));
       return;
     }
-    saveSettings(remindTimeInput.value);
+    saveSettings(remindTimeInput.value, language);
   });
 
   function openAddForm() {
     editingId = null;
     formEl.reset();
     hideFormError();
-    formTitleEl.textContent = "Новое задание";
-    formEl.querySelector('button[type="submit"]').textContent = "Сохранить";
+    formTitleEl.textContent = t("newTask");
+    formEl.querySelector('button[type="submit"]').textContent = t("save");
     formEl.classList.remove("hidden");
     subjectInput.focus();
   }
@@ -144,8 +212,8 @@
     subjectInput.value = item.subject;
     titleInput.value = item.title;
     deadlineInput.value = item.deadline;
-    formTitleEl.textContent = "Редактирование задания №" + item.id;
-    formEl.querySelector('button[type="submit"]').textContent = "Сохранить изменения";
+    formTitleEl.textContent = t("editTask", { id: item.id });
+    formEl.querySelector('button[type="submit"]').textContent = t("saveChanges");
     settingsFormEl.classList.add("hidden");
     formEl.classList.remove("hidden");
     subjectInput.focus();
@@ -160,23 +228,33 @@
 
   function openSettingsForm() {
     hideSettingsError();
+    languageTouched = false;
+    settingsOriginalLanguage = language;
     settingsFormEl.classList.remove("hidden");
     remindTimeInput.value = "";
     apiFetch("/api/settings")
       .then(function (settings) {
         remindTimeInput.value = (settings && settings.reminder_time) || "09:00";
+        if (!languageTouched) {
+          settingsOriginalLanguage = (settings && settings.language) || language;
+          language = settingsOriginalLanguage;
+          applyLanguage();
+        }
       })
       .catch(function () {
         remindTimeInput.value = "09:00";
+        settingsOriginalLanguage = language;
       });
   }
 
-  function saveSettings(reminderTime) {
+  function saveSettings(reminderTime, selectedLanguage) {
     const submitButton = settingsFormEl.querySelector('button[type="submit"]');
     submitButton.disabled = true;
-    apiFetch("/api/settings", { method: "PUT", body: JSON.stringify({ reminder_time: reminderTime }) })
+    apiFetch("/api/settings", { method: "PUT", body: JSON.stringify({ reminder_time: reminderTime, language: selectedLanguage }) })
       .then(function () {
         haptic("notificationSuccess");
+        settingsOriginalLanguage = selectedLanguage;
+        languageTouched = false;
         settingsFormEl.classList.add("hidden");
       })
       .catch(function (err) {
@@ -188,16 +266,20 @@
   }
 
   function loadHomework() {
-    setStatus("Загрузка…");
-    Promise.all([apiFetch("/api/homework"), fetchAnalytics()])
+    setStatus(t("loading"));
+    Promise.all([apiFetch("/api/homework"), fetchAnalytics(), apiFetch("/api/settings")])
       .then(function (results) {
         homeworkItems = results[0] || [];
+        language = results[2].language || "ru";
+        settingsOriginalLanguage = language;
+        languageTouched = false;
+        applyLanguage();
         renderCurrentSection();
         renderAnalytics(results[1] || {});
         setStatus("");
       })
       .catch(function (err) {
-        setStatus("Не удалось загрузить список: " + err.message);
+        setStatus(t("loadTasksError") + err.message);
       });
   }
 
@@ -238,9 +320,9 @@
   function deleteHomework(id, itemEl) {
     const confirmed = tg && tg.showConfirm
       ? new Promise(function (resolve) {
-          tg.showConfirm("Удалить это задание?", resolve);
+          tg.showConfirm(t("deleteConfirm"), resolve);
         })
-      : Promise.resolve(window.confirm("Удалить это задание?"));
+      : Promise.resolve(window.confirm(t("deleteConfirm")));
 
     confirmed.then(function (ok) {
       if (!ok) return;
@@ -250,7 +332,7 @@
           loadHomework();
         })
         .catch(function (err) {
-          setStatus("Не удалось удалить: " + err.message);
+          setStatus(t("deleteError") + err.message);
         });
     });
   }
@@ -286,22 +368,23 @@
   }
 
   function emptyMessage() {
-    if (currentSection === "completed") return "Пока нет сделанных заданий.";
-    if (currentSection === "overdue") return "Просроченных заданий нет.";
-    return "Несделанных заданий нет. Нажмите «+», чтобы добавить.";
+    if (currentSection === "completed") return t("noCompleted");
+    if (currentSection === "overdue") return t("noOverdue");
+    return t("noUncompleted");
   }
 
   function renderAnalytics(data) {
+    analyticsData = data;
     statCompletedEl.textContent = data.completed_this_week || 0;
     statMonthCompletedEl.textContent = data.completed_this_month || 0;
     statUncompletedEl.textContent = data.uncompleted || 0;
     statOverdueEl.textContent = data.overdue || 0;
-    weekRangeEl.textContent = "Неделя: " + formatDate(data.week_start) + " — " + formatDate(data.week_end);
+    weekRangeEl.textContent = t("weekRange", { from: formatDate(data.week_start), to: formatDate(data.week_end) });
     selectedMonth = data.month;
     monthPickerEl.value = data.month;
     monthPickerEl.max = data.current_month;
     monthNextEl.disabled = data.month >= data.current_month;
-    monthChartTitleEl.textContent = "Выполнено по дням — " + formatMonth(data.month);
+    monthChartTitleEl.textContent = t("monthGraphTitle", { month: formatMonth(data.month) });
     renderLineChart(weekChartEl, data.week_days || [], true);
     renderLineChart(monthChartEl, data.month_days || [], false);
   }
@@ -314,7 +397,7 @@
   function loadAnalytics() {
     fetchAnalytics()
       .then(renderAnalytics)
-      .catch(function (err) { setStatus("Не удалось загрузить аналитику: " + err.message); });
+      .catch(function (err) { setStatus(t("loadAnalyticsError") + err.message); });
   }
 
   function shiftSelectedMonth(amount) {
@@ -329,7 +412,7 @@
   function formatMonth(month) {
     const parts = month.split("-");
     return new Date(Number(parts[0]), Number(parts[1]) - 1, 1)
-      .toLocaleDateString("ru-RU", { month: "long", year: "numeric" });
+      .toLocaleDateString(language === "en" ? "en-US" : "ru-RU", { month: "long", year: "numeric" });
   }
 
   function renderLineChart(container, days, showWeekday) {
@@ -344,7 +427,7 @@
     const svg = document.createElementNS(namespace, "svg");
     svg.setAttribute("viewBox", "0 0 " + width + " " + height);
     svg.setAttribute("role", "img");
-    svg.setAttribute("aria-label", showWeekday ? "Выполненные задачи за текущую неделю" : "Выполненные задачи за выбранный месяц");
+    svg.setAttribute("aria-label", t(showWeekday ? "weekChartAria" : "monthChartAria"));
     if (showWeekday) {
       svg.setAttribute("preserveAspectRatio", "none");
     } else {
@@ -387,7 +470,7 @@
       circle.setAttribute("r", showWeekday ? 4 : 3);
       circle.setAttribute("class", "chart-point");
       const title = document.createElementNS(namespace, "title");
-      title.textContent = formatDate(point.day.date) + ": " + point.day.count;
+      title.textContent = t("chartCount", { date: formatDate(point.day.date), count: point.day.count });
       circle.appendChild(title);
       svg.appendChild(circle);
 
@@ -401,7 +484,7 @@
         label.setAttribute("text-anchor", "middle");
         label.setAttribute("class", "chart-date-label");
         label.textContent = showWeekday
-          ? date.toLocaleDateString("ru-RU", { weekday: "short" })
+          ? date.toLocaleDateString(language === "en" ? "en-US" : "ru-RU", { weekday: "short" })
           : String(date.getDate());
         svg.appendChild(label);
       }
@@ -436,7 +519,7 @@
     if (item.completed) {
       const completedDate = document.createElement("p");
       completedDate.className = "item-completed";
-      completedDate.textContent = item.completed_at ? "Сделано: " + formatDate(item.completed_at) : "Сделано";
+      completedDate.textContent = item.completed_at ? t("doneDate", { date: formatDate(item.completed_at) }) : t("done");
       body.appendChild(completedDate);
     }
 
@@ -446,7 +529,7 @@
     const completeButton = document.createElement("button");
     completeButton.className = "icon-action complete-button" + (item.completed ? " is-completed" : "");
     completeButton.type = "button";
-    completeButton.setAttribute("aria-label", item.completed ? "Вернуть в несделанные" : "Отметить сделанным");
+    completeButton.setAttribute("aria-label", item.completed ? t("undoDone") : t("markDone"));
     completeButton.textContent = item.completed ? "↶" : "✓";
     completeButton.addEventListener("click", function () {
       apiFetch("/api/homework/" + item.id + "/status", {
@@ -456,14 +539,14 @@
         haptic("notificationSuccess");
         loadHomework();
       }).catch(function (err) {
-        setStatus("Не удалось изменить статус: " + err.message);
+        setStatus(t("statusError") + err.message);
       });
     });
 
     const editButton = document.createElement("button");
     editButton.className = "icon-action edit-button";
     editButton.type = "button";
-    editButton.setAttribute("aria-label", "Редактировать");
+    editButton.setAttribute("aria-label", t("editTaskAria"));
     editButton.textContent = "✎";
     editButton.addEventListener("click", function () {
       openEditForm(item);
@@ -472,7 +555,7 @@
     const deleteButton = document.createElement("button");
     deleteButton.className = "icon-action delete-button";
     deleteButton.type = "button";
-    deleteButton.setAttribute("aria-label", "Удалить");
+    deleteButton.setAttribute("aria-label", t("deleteTaskAria"));
     deleteButton.textContent = "✕";
     deleteButton.addEventListener("click", function () {
       deleteHomework(item.id, li);
@@ -489,7 +572,9 @@
 
   function formatDate(dateStr) {
     const parts = dateStr.split("-");
-    return parts[2] + "." + parts[1] + "." + parts[0];
+    return language === "en"
+      ? parts[1] + "/" + parts[2] + "/" + parts[0]
+      : parts[2] + "." + parts[1] + "." + parts[0];
   }
 
   function deadlineClass(daysLeft) {
@@ -500,11 +585,22 @@
   }
 
   function formatDeadline(dateStr, daysLeft) {
-    const parts = dateStr.split("-");
-    const formatted = parts[2] + "." + parts[1] + "." + parts[0];
-    if (daysLeft < 0) return formatted + " — просрочено на " + -daysLeft + " дн.";
-    if (daysLeft === 0) return formatted + " — срок сегодня";
-    return formatted + " — осталось " + daysLeft + " дн.";
+    const formatted = formatDate(dateStr);
+    if (daysLeft < 0) {
+      const overdueDays = -daysLeft;
+      return formatted + " — " + t("overdueBy", { days: overdueDays, unit: dayUnit(overdueDays) });
+    }
+    if (daysLeft === 0) return formatted + " — " + t("dueToday");
+    return formatted + " — " + t("daysLeft", { days: daysLeft, unit: dayUnit(daysLeft) });
+  }
+
+  function dayUnit(days) {
+    if (language === "en") return days === 1 ? t("dayUnitOne") : t("dayUnit");
+    const remainder = days % 10;
+    const lastTwo = days % 100;
+    if (remainder === 1 && lastTwo !== 11) return t("dayUnitOne");
+    if (remainder >= 2 && remainder <= 4 && (lastTwo < 12 || lastTwo > 14)) return t("dayUnitFew");
+    return t("dayUnit");
   }
 
   function apiFetch(path, options) {
@@ -526,6 +622,39 @@
 
   function setStatus(text) {
     statusEl.textContent = text;
+  }
+
+  function t(key, values) {
+    let value = (translations[language] && translations[language][key]) || translations.ru[key] || key;
+    Object.keys(values || {}).forEach(function (name) {
+      value = value.replace("{" + name + "}", values[name]);
+    });
+    return value;
+  }
+
+  function applyLanguage() {
+    document.documentElement.lang = language;
+    document.title = t("appTitle");
+    document.querySelectorAll("[data-i18n]").forEach(function (element) {
+      element.textContent = t(element.dataset.i18n);
+    });
+    document.querySelectorAll("[data-i18n-aria]").forEach(function (element) {
+      element.setAttribute("aria-label", t(element.dataset.i18nAria));
+    });
+    document.querySelectorAll("[data-i18n-placeholder]").forEach(function (element) {
+      element.setAttribute("placeholder", t(element.dataset.i18nPlaceholder));
+    });
+    languageButtons.forEach(function (button) {
+      const selected = button.dataset.language === language;
+      button.classList.toggle("active", selected);
+      button.setAttribute("aria-pressed", selected ? "true" : "false");
+    });
+    if (editingId) {
+      formTitleEl.textContent = t("editTask", { id: editingId });
+      formEl.querySelector('button[type="submit"]').textContent = t("saveChanges");
+    }
+    renderCurrentSection();
+    if (analyticsData) renderAnalytics(analyticsData);
   }
 
   function showFormError(text) {

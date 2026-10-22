@@ -316,12 +316,50 @@ body::after {
 .section-button[data-section="overdue"] {
   color: var(--red);
   border-color: rgba(255, 56, 96, 0.45);
+  font-size: 12px;
 }
 
 .section-button[data-section="overdue"].active {
   background: rgba(255, 56, 96, 0.12);
   border-color: var(--red);
   box-shadow: 0 0 13px rgba(255, 56, 96, 0.32), inset 0 0 10px rgba(255, 56, 96, 0.08);
+}
+
+.language-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.language-label {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.language-picker {
+  display: flex;
+  gap: 6px;
+}
+
+.language-option {
+  padding: 7px 11px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: rgba(12, 7, 15, 0.55);
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.language-option.active {
+  color: var(--cyan);
+  border-color: rgba(46, 248, 255, 0.7);
+  background: rgba(46, 248, 255, 0.1);
+  box-shadow: 0 0 10px rgba(46, 248, 255, 0.2);
 }
 
 .analytics {
@@ -676,5 +714,18 @@ body::after {
   .item {
     border-color: rgba(46, 248, 255, 0.5);
     box-shadow: 0 0 10px rgba(46, 248, 255, 0.25);
+  }
+}
+
+@media (max-width: 440px) {
+  .sections {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .section-button,
+  .section-button[data-section="overdue"] {
+    min-height: 42px;
+    font-size: 13px;
+    letter-spacing: 0;
   }
 }
