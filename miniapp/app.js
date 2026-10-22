@@ -302,8 +302,8 @@
     monthPickerEl.max = data.current_month;
     monthNextEl.disabled = data.month >= data.current_month;
     monthChartTitleEl.textContent = "Выполнено по дням — " + formatMonth(data.month);
-    renderChart(weekChartEl, data.week_days || [], true);
-    renderChart(monthChartEl, data.month_days || [], false);
+    renderLineChart(weekChartEl, data.week_days || [], true);
+    renderLineChart(monthChartEl, data.month_days || [], false);
   }
 
   function fetchAnalytics() {
@@ -332,38 +332,82 @@
       .toLocaleDateString("ru-RU", { month: "long", year: "numeric" });
   }
 
-  function renderChart(container, days, showWeekday) {
-    container.innerHTML = "";
+  function renderLineChart(container, days, showWeekday) {
+    const namespace = "http://www.w3.org/2000/svg";
+    const width = showWeekday ? 520 : Math.max(520, days.length * 24);
+    const height = 210;
+    const left = 38;
+    const right = width - 14;
+    const top = 18;
+    const bottom = height - 34;
     const max = Math.max(1, ...days.map(function (day) { return day.count; }));
-    days.forEach(function (day) {
-      const dateParts = day.date.split("-").map(Number);
-      const date = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
-      const column = document.createElement("div");
-      column.className = "chart-column";
-      column.title = formatDate(day.date) + ": " + day.count;
+    const svg = document.createElementNS(namespace, "svg");
+    svg.setAttribute("viewBox", "0 0 " + width + " " + height);
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", showWeekday ? "Выполненные задачи за текущую неделю" : "Выполненные задачи за выбранный месяц");
+    if (showWeekday) {
+      svg.setAttribute("preserveAspectRatio", "none");
+    } else {
+      svg.style.width = width + "px";
+    }
 
-      const value = document.createElement("span");
-      value.className = "chart-value";
-      value.textContent = day.count;
+    (max < 2 ? [0, max] : [0, max / 2, max]).forEach(function (value) {
+      const y = bottom - value / max * (bottom - top);
+      const gridLine = document.createElementNS(namespace, "line");
+      gridLine.setAttribute("x1", left);
+      gridLine.setAttribute("x2", right);
+      gridLine.setAttribute("y1", y);
+      gridLine.setAttribute("y2", y);
+      gridLine.setAttribute("class", "chart-grid-line");
+      svg.appendChild(gridLine);
 
-      const track = document.createElement("div");
-      track.className = "chart-track";
-      const bar = document.createElement("i");
-      bar.className = "chart-bar";
-      bar.style.height = (day.count === 0 ? 3 : Math.max(8, day.count / max * 100)) + "%";
-      track.appendChild(bar);
-
-      const label = document.createElement("span");
-      label.className = "chart-label";
-      label.textContent = showWeekday
-        ? date.toLocaleDateString("ru-RU", { weekday: "short" })
-        : String(date.getDate());
-
-      column.appendChild(value);
-      column.appendChild(track);
-      column.appendChild(label);
-      container.appendChild(column);
+      const axisLabel = document.createElementNS(namespace, "text");
+      axisLabel.setAttribute("x", left - 8);
+      axisLabel.setAttribute("y", y + 4);
+      axisLabel.setAttribute("text-anchor", "end");
+      axisLabel.setAttribute("class", "chart-axis-label");
+      axisLabel.textContent = Math.round(value);
+      svg.appendChild(axisLabel);
     });
+
+    const points = days.map(function (day, index) {
+      const x = days.length <= 1 ? (left + right) / 2 : left + index * (right - left) / (days.length - 1);
+      const y = bottom - day.count / max * (bottom - top);
+      return { day: day, x: x, y: y };
+    });
+    const line = document.createElementNS(namespace, "polyline");
+    line.setAttribute("points", points.map(function (point) { return point.x + "," + point.y; }).join(" "));
+    line.setAttribute("class", "chart-line");
+    svg.appendChild(line);
+
+    points.forEach(function (point, index) {
+      const circle = document.createElementNS(namespace, "circle");
+      circle.setAttribute("cx", point.x);
+      circle.setAttribute("cy", point.y);
+      circle.setAttribute("r", showWeekday ? 4 : 3);
+      circle.setAttribute("class", "chart-point");
+      const title = document.createElementNS(namespace, "title");
+      title.textContent = formatDate(point.day.date) + ": " + point.day.count;
+      circle.appendChild(title);
+      svg.appendChild(circle);
+
+      const dateParts = point.day.date.split("-").map(Number);
+      const date = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+      const showMonthLabel = index === 0 || index === points.length - 1 || date.getDate() % 5 === 0;
+      if (showWeekday || showMonthLabel) {
+        const label = document.createElementNS(namespace, "text");
+        label.setAttribute("x", point.x);
+        label.setAttribute("y", height - 9);
+        label.setAttribute("text-anchor", "middle");
+        label.setAttribute("class", "chart-date-label");
+        label.textContent = showWeekday
+          ? date.toLocaleDateString("ru-RU", { weekday: "short" })
+          : String(date.getDate());
+        svg.appendChild(label);
+      }
+    });
+
+    container.replaceChildren(svg);
   }
 
   function renderItem(item) {

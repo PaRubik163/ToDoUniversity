@@ -267,6 +267,11 @@ body::after {
   gap: 14px;
 }
 
+.list.hidden,
+.analytics.hidden {
+  display: none;
+}
+
 .sections {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -276,15 +281,18 @@ body::after {
 
 .section-button {
   min-height: 40px;
-  padding: 7px 5px;
+  padding: 7px 2px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: rgba(33, 22, 40, 0.88);
   color: var(--muted);
   font-family: inherit;
-  font-size: 13px;
+  font-size: clamp(9px, 2.8vw, 12px);
   font-weight: 700;
   line-height: 1.1;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
   cursor: pointer;
 }
 
@@ -447,72 +455,73 @@ body::after {
   scrollbar-width: thin;
 }
 
-.bar-chart {
-  display: flex;
-  align-items: stretch;
-  gap: 7px;
-  min-height: 158px;
-  padding: 6px 2px 0;
+.line-chart {
+  width: 100%;
+  height: 210px;
 }
 
-.bar-chart--week .chart-column {
-  flex: 1 1 0;
-}
-
-.bar-chart--month {
+.line-chart--month {
   width: max-content;
   min-width: 100%;
-  gap: 5px;
 }
 
-.bar-chart--month .chart-column {
-  flex: 0 0 22px;
+.line-chart svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
 }
 
-.chart-column {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
+.line-chart--month svg {
+  height: 210px;
+  max-width: none;
 }
 
-.chart-value,
-.chart-label {
-  color: var(--muted);
+.chart-grid-line {
+  stroke: rgba(154, 138, 171, 0.2);
+  stroke-width: 1;
+  stroke-dasharray: 3 5;
+}
+
+.chart-axis-label,
+.chart-date-label {
+  fill: var(--muted);
+  font-family: "Rajdhani", sans-serif;
   font-size: 11px;
   font-weight: 700;
-  line-height: 1;
 }
 
-.chart-value {
-  min-height: 12px;
-  color: var(--cyan);
+.chart-line {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
-.chart-track {
-  width: 100%;
-  height: 112px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  border-bottom: 1px solid rgba(154, 138, 171, 0.3);
-  background: repeating-linear-gradient(to top, transparent 0 26px, rgba(154, 138, 171, 0.08) 27px 28px);
+.chart-point {
+  stroke-width: 2;
 }
 
-.chart-bar {
-  display: block;
-  width: min(70%, 20px);
-  min-height: 3px;
-  border-radius: 5px 5px 1px 1px;
-  background: linear-gradient(to top, var(--violet), var(--cyan));
-  box-shadow: 0 0 9px rgba(46, 248, 255, 0.55), 0 0 18px rgba(139, 92, 246, 0.28);
-  transition: height 0.25s ease;
+.line-chart--week .chart-line {
+  stroke: #d8cf68;
+  filter: drop-shadow(0 0 4px rgba(216, 207, 104, 0.95)) drop-shadow(0 0 10px rgba(216, 207, 104, 0.55));
 }
 
-.bar-chart--month .chart-bar {
-  background: linear-gradient(to top, #a51b91, var(--magenta));
-  box-shadow: 0 0 8px rgba(255, 54, 224, 0.52), 0 0 16px rgba(255, 54, 224, 0.22);
+.line-chart--week .chart-point {
+  fill: #f4ec91;
+  stroke: #b5aa3b;
+  filter: drop-shadow(0 0 5px rgba(216, 207, 104, 0.9));
+}
+
+.line-chart--month .chart-line {
+  stroke: #7541d8;
+  filter: drop-shadow(0 0 4px rgba(117, 65, 216, 0.95)) drop-shadow(0 0 12px rgba(117, 65, 216, 0.65));
+}
+
+.line-chart--month .chart-point {
+  fill: #a67aff;
+  stroke: #6331bd;
+  filter: drop-shadow(0 0 5px rgba(117, 65, 216, 0.95));
 }
 
 /* The main ask: an iridescent, slowly cycling glow around each task's border. */
