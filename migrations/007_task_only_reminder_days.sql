@@ -1,3 +1,6 @@
+ALTER TABLE homework
+    ADD COLUMN IF NOT EXISTS reminder_days SMALLINT[];
+
 UPDATE homework h
 SET reminder_days = COALESCE(s.reminder_days, ARRAY[7]::smallint[])
 FROM user_settings s
