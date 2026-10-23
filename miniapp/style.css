@@ -157,6 +157,32 @@ body {
 .button.secondary { border-color: var(--line); background: transparent; color: var(--muted); }
 .button.secondary:hover { border-color: var(--muted); color: var(--ink); }
 
+.reminder-setting { min-width: 0; margin: 0; padding: 0; border: 0; }
+.reminder-setting legend { margin-bottom: 8px; color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .045em; text-transform: uppercase; }
+.reminder-day-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+.add-form .reminder-day-option {
+  display: flex;
+  min-height: 42px;
+  flex-direction: row;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--surface-raised);
+  color: var(--ink);
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.add-form .reminder-day-option input { width: 17px; min-height: 17px; margin: 0; accent-color: var(--olive); }
+.reminder-times { display: flex; flex-direction: column; gap: 8px; }
+.reminder-time-row { display: flex; align-items: center; gap: 8px; }
+.add-form .reminder-time-row input { flex: 1; min-width: 0; }
+.remove-reminder-time { min-height: 42px; }
+.remove-reminder-time:disabled { opacity: .45; cursor: default; }
+.add-reminder-time { flex: 0; align-self: flex-start; margin-top: 8px; }
+
 .error { margin: 0; color: var(--red); font-size: 13px; font-weight: 600; }
 .status { min-height: 18px; margin: 0 0 8px; color: var(--muted); font-size: 13px; }
 

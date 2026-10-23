@@ -425,8 +425,9 @@ func (b *Bot) apiUpdateHomework(w http.ResponseWriter, r *http.Request, userID, 
 
 // apiSettings is the JSON shape for the mini app's reminder-time setting.
 type apiSettings struct {
-	ReminderTime string `json:"reminder_time"` // HH:MM, 24h
-	Language     string `json:"language"`
+	ReminderTimes []string `json:"reminder_times"` // HH:MM, 24h
+	ReminderDays  []int    `json:"reminder_days"`
+	Language      string   `json:"language"`
 }
 
 func (b *Bot) handleSettings(w http.ResponseWriter, r *http.Request, userID int64) {
@@ -441,20 +442,45 @@ func (b *Bot) handleSettings(w http.ResponseWriter, r *http.Request, userID int6
 }
 
 func (b *Bot) apiGetSettings(w http.ResponseWriter, r *http.Request, userID int64) {
-	var hour, minute int
+	var timesJSON string
+	var daysJSON string
 	var language string
 	err := b.db.QueryRowContext(r.Context(),
-		`SELECT reminder_hour, reminder_minute, language FROM user_settings WHERE chat_id = $1`, userID,
-	).Scan(&hour, &minute, &language)
+		`SELECT array_to_json(reminder_times)::text, array_to_json(reminder_days)::text, language FROM user_settings WHERE chat_id = $1`, userID,
+	).Scan(&timesJSON, &daysJSON, &language)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
 			log.Printf("get settings: %v", err)
 			http.Error(w, "database error", http.StatusInternalServerError)
 			return
 		}
-		hour, minute, language = 9, 0, "ru" // defaults match the migration
+		timesJSON, daysJSON, language = `["09:00:00"]`, `[7]`, "ru"
 	}
-	writeJSON(w, apiSettings{ReminderTime: fmt.Sprintf("%02d:%02d", hour, minute), Language: language})
+	var dbTimes []string
+	var days []int
+	if err := json.Unmarshal([]byte(timesJSON), &dbTimes); err != nil {
+		log.Printf("decode reminder times: %v", err)
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	if err := json.Unmarshal([]byte(daysJSON), &days); err != nil {
+		log.Printf("decode reminder days: %v", err)
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	for i, value := range dbTimes {
+		parsed, err := time.Parse("15:04:05", value)
+		if err != nil {
+			parsed, err = time.Parse("15:04", value)
+		}
+		if err != nil {
+			log.Printf("decode reminder time %q: %v", value, err)
+			http.Error(w, "database error", http.StatusInternalServerError)
+			return
+		}
+		dbTimes[i] = parsed.Format("15:04")
+	}
+	writeJSON(w, apiSettings{ReminderTimes: dbTimes, ReminderDays: days, Language: language})
 }
 
 func (b *Bot) apiPutSettings(w http.ResponseWriter, r *http.Request, userID int64) {
@@ -463,10 +489,43 @@ func (b *Bot) apiPutSettings(w http.ResponseWriter, r *http.Request, userID int6
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-	parsed, err := time.Parse("15:04", strings.TrimSpace(req.ReminderTime))
-	if err != nil {
-		http.Error(w, "reminder_time must be in HH:MM format", http.StatusBadRequest)
+	if len(req.ReminderTimes) == 0 || len(req.ReminderTimes) > 8 {
+		http.Error(w, "choose between 1 and 8 reminder times", http.StatusBadRequest)
 		return
+	}
+	times := make([]string, 0, len(req.ReminderTimes))
+	seenTimes := make(map[string]bool, len(req.ReminderTimes))
+	for _, value := range req.ReminderTimes {
+		parsed, err := time.Parse("15:04", strings.TrimSpace(value))
+		if err != nil {
+			http.Error(w, "reminder_times must use HH:MM format", http.StatusBadRequest)
+			return
+		}
+		value = parsed.Format("15:04")
+		if seenTimes[value] {
+			http.Error(w, "reminder times must be unique", http.StatusBadRequest)
+			return
+		}
+		seenTimes[value] = true
+		times = append(times, value)
+	}
+	if len(req.ReminderDays) == 0 || len(req.ReminderDays) > 4 {
+		http.Error(w, "choose at least one reminder interval", http.StatusBadRequest)
+		return
+	}
+	days := make([]string, 0, len(req.ReminderDays))
+	seenDays := make(map[int]bool, len(req.ReminderDays))
+	for _, value := range req.ReminderDays {
+		if value != 14 && value != 7 && value != 3 && value != 1 {
+			http.Error(w, "reminder_days may contain only 14, 7, 3, and 1", http.StatusBadRequest)
+			return
+		}
+		if seenDays[value] {
+			http.Error(w, "reminder days must be unique", http.StatusBadRequest)
+			return
+		}
+		seenDays[value] = true
+		days = append(days, strconv.Itoa(value))
 	}
 	req.Language = strings.TrimSpace(req.Language)
 	if req.Language != "" && req.Language != "ru" && req.Language != "en" {
@@ -485,18 +544,30 @@ func (b *Bot) apiPutSettings(w http.ResponseWriter, r *http.Request, userID int6
 			language = "ru"
 		}
 	}
-	_, err = b.db.ExecContext(r.Context(), `
-		INSERT INTO user_settings (chat_id, reminder_hour, reminder_minute, language, updated_at)
-		VALUES ($1, $2, $3, $4, now())
+	_, err := b.db.ExecContext(r.Context(), `
+		INSERT INTO user_settings (chat_id, reminder_hour, reminder_minute, reminder_times, reminder_days, language, updated_at)
+		VALUES ($1, $2, $3, string_to_array($4, ',')::time[], string_to_array($5, ',')::smallint[], $6, now())
 		ON CONFLICT (chat_id) DO UPDATE SET
-			reminder_hour = $2, reminder_minute = $3, language = $4, updated_at = now()`,
-		userID, parsed.Hour(), parsed.Minute(), language)
+			reminder_hour = $2, reminder_minute = $3,
+			reminder_times = string_to_array($4, ',')::time[], reminder_days = string_to_array($5, ',')::smallint[],
+			language = $6, updated_at = now()`,
+		userID, mustParseClock(times[0]), mustParseClockMinute(times[0]), strings.Join(times, ","), strings.Join(days, ","), language)
 	if err != nil {
 		log.Printf("put settings: %v", err)
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, apiSettings{ReminderTime: fmt.Sprintf("%02d:%02d", parsed.Hour(), parsed.Minute()), Language: language})
+	writeJSON(w, apiSettings{ReminderTimes: times, ReminderDays: req.ReminderDays, Language: language})
+}
+
+func mustParseClock(value string) int {
+	parsed, _ := time.Parse("15:04", value)
+	return parsed.Hour()
+}
+
+func mustParseClockMinute(value string) int {
+	parsed, _ := time.Parse("15:04", value)
+	return parsed.Minute()
 }
 
 func (b *Bot) apiListHomework(w http.ResponseWriter, r *http.Request, userID int64) {

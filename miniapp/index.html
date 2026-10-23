@@ -22,10 +22,20 @@
 
   <form id="settings-form" class="add-form hidden">
     <p class="form-title" data-i18n="settingsTitle">Настройки</p>
-    <label>
-      <span data-i18n="remindDailyAt">Напоминать каждый день в</span>
-      <input id="field-remind-time" type="time" required>
-    </label>
+    <fieldset class="reminder-setting">
+      <legend data-i18n="reminderDaysLabel">Напоминать за</legend>
+      <div class="reminder-day-options">
+        <label class="reminder-day-option"><input type="checkbox" name="reminder-day" value="14"><span data-i18n="days14">14 дней</span></label>
+        <label class="reminder-day-option"><input type="checkbox" name="reminder-day" value="7" checked><span data-i18n="days7">7 дней</span></label>
+        <label class="reminder-day-option"><input type="checkbox" name="reminder-day" value="3"><span data-i18n="days3">3 дня</span></label>
+        <label class="reminder-day-option"><input type="checkbox" name="reminder-day" value="1"><span data-i18n="days1">1 день</span></label>
+      </div>
+    </fieldset>
+    <fieldset class="reminder-setting">
+      <legend data-i18n="reminderTimesLabel">Время напоминаний каждый день</legend>
+      <div id="reminder-times" class="reminder-times"></div>
+      <button type="button" id="add-reminder-time" class="button secondary add-reminder-time" data-i18n="addReminderTime">Добавить время</button>
+    </fieldset>
     <div class="language-setting">
       <span class="language-label" data-i18n="languageLabel">Язык</span>
       <div class="language-picker" role="group" aria-label="Язык интерфейса" data-i18n-aria="languageLabel">

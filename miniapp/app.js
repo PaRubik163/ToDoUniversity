@@ -4,7 +4,8 @@
   const translations = {
     ru: {
       appTitle: "Задания", settingsAria: "Настройки", addTaskAria: "Добавить задание",
-      settingsTitle: "Настройки", remindDailyAt: "Напоминать каждый день в", languageLabel: "Язык",
+      settingsTitle: "Настройки", reminderDaysLabel: "Напоминать за", days14: "14 дней", days7: "7 дней", days3: "3 дня", days1: "1 день",
+      reminderTimesLabel: "Время напоминаний каждый день", addReminderTime: "Добавить время", removeReminderTime: "Удалить время", languageLabel: "Язык",
       cancel: "Отмена", save: "Сохранить", saveChanges: "Сохранить изменения",
       newTask: "Новое задание", subject: "Предмет", subjectPlaceholder: "Разработка безопасного ПО",
       task: "Задание", taskPlaceholder: "Практическая 1", deadline: "Дедлайн",
@@ -14,7 +15,7 @@
       doneThisMonth: "Сделано за месяц", uncompletedTotal: "Несделано всего", overdueTotal: "Просрочено",
       currentWeek: "Текущая неделя", loading: "Загрузка…",
       openTelegram: "Откройте это приложение через Telegram, чтобы увидеть свои задания.",
-      fillAll: "Заполните все поля.", timeRequired: "Укажите время.",
+      fillAll: "Заполните все поля.", timeRequired: "Укажите хотя бы одно время и выберите интервал.",
       loadTasksError: "Не удалось загрузить список: ", loadAnalyticsError: "Не удалось загрузить аналитику: ",
       deleteError: "Не удалось удалить: ", statusError: "Не удалось изменить статус: ",
       deleteConfirm: "Удалить это задание?", noCompleted: "Пока нет сделанных заданий.",
@@ -29,7 +30,8 @@
     },
     en: {
       appTitle: "Tasks", settingsAria: "Settings", addTaskAria: "Add task",
-      settingsTitle: "Settings", remindDailyAt: "Remind me every day at", languageLabel: "Language",
+      settingsTitle: "Settings", reminderDaysLabel: "Remind me", days14: "14 days before", days7: "7 days before", days3: "3 days before", days1: "1 day before",
+      reminderTimesLabel: "Reminder times each day", addReminderTime: "Add time", removeReminderTime: "Remove time", languageLabel: "Language",
       cancel: "Cancel", save: "Save", saveChanges: "Save changes",
       newTask: "New task", subject: "Subject", subjectPlaceholder: "Secure Software Development",
       task: "Task", taskPlaceholder: "Assignment 1", deadline: "Deadline",
@@ -39,7 +41,7 @@
       doneThisMonth: "Done this month", uncompletedTotal: "To do", overdueTotal: "Overdue",
       currentWeek: "Current week", loading: "Loading…",
       openTelegram: "Open this app through Telegram to see your tasks.",
-      fillAll: "Please fill in every field.", timeRequired: "Please choose a reminder time.",
+      fillAll: "Please fill in every field.", timeRequired: "Choose at least one time and one interval.",
       loadTasksError: "Could not load tasks: ", loadAnalyticsError: "Could not load analytics: ",
       deleteError: "Could not delete task: ", statusError: "Could not update task: ",
       deleteConfirm: "Delete this task?", noCompleted: "No completed tasks yet.",
@@ -87,7 +89,9 @@
   const settingsFormEl = document.getElementById("settings-form");
   const settingsErrorEl = document.getElementById("settings-error");
   const cancelSettingsEl = document.getElementById("cancel-settings");
-  const remindTimeInput = document.getElementById("field-remind-time");
+  const reminderTimesEl = document.getElementById("reminder-times");
+  const addReminderTimeEl = document.getElementById("add-reminder-time");
+  const reminderDayInputs = Array.from(document.querySelectorAll('input[name="reminder-day"]'));
   const languageButtons = Array.from(document.querySelectorAll(".language-option"));
 
   let editingId = null;
@@ -131,6 +135,14 @@
       language = button.dataset.language;
       applyLanguage();
     });
+  });
+  addReminderTimeEl.addEventListener("click", function () {
+    const existing = Array.from(reminderTimesEl.querySelectorAll('input[type="time"]'));
+    if (existing.length >= 8) return;
+    const last = existing.length ? existing[existing.length - 1].value : "09:00";
+    const parsed = last ? last.split(":").map(Number) : [9, 0];
+    const nextHour = (parsed[0] + 1) % 24;
+    addReminderTimeRow(String(nextHour).padStart(2, "0") + ":" + String(parsed[1]).padStart(2, "0"));
   });
 
   addToggleEl.addEventListener("click", function () {
@@ -189,11 +201,13 @@
   settingsFormEl.addEventListener("submit", function (event) {
     event.preventDefault();
     hideSettingsError();
-    if (!remindTimeInput.value) {
+    const reminderTimes = Array.from(reminderTimesEl.querySelectorAll('input[type="time"]')).map(function (input) { return input.value; }).filter(Boolean);
+    const reminderDays = reminderDayInputs.filter(function (input) { return input.checked; }).map(function (input) { return Number(input.value); });
+    if (!reminderTimes.length || !reminderDays.length || new Set(reminderTimes).size !== reminderTimes.length) {
       showSettingsError(t("timeRequired"));
       return;
     }
-    saveSettings(remindTimeInput.value, language);
+    saveSettings(reminderTimes, reminderDays, language);
   });
 
   function openAddForm() {
@@ -231,10 +245,11 @@
     languageTouched = false;
     settingsOriginalLanguage = language;
     settingsFormEl.classList.remove("hidden");
-    remindTimeInput.value = "";
+    reminderTimesEl.replaceChildren();
     apiFetch("/api/settings")
       .then(function (settings) {
-        remindTimeInput.value = (settings && settings.reminder_time) || "09:00";
+        renderReminderTimes((settings && settings.reminder_times) || ["09:00"]);
+        setReminderDays((settings && settings.reminder_days) || [7]);
         if (!languageTouched) {
           settingsOriginalLanguage = (settings && settings.language) || language;
           language = settingsOriginalLanguage;
@@ -242,15 +257,16 @@
         }
       })
       .catch(function () {
-        remindTimeInput.value = "09:00";
+        renderReminderTimes(["09:00"]);
+        setReminderDays([7]);
         settingsOriginalLanguage = language;
       });
   }
 
-  function saveSettings(reminderTime, selectedLanguage) {
+  function saveSettings(reminderTimes, reminderDays, selectedLanguage) {
     const submitButton = settingsFormEl.querySelector('button[type="submit"]');
     submitButton.disabled = true;
-    apiFetch("/api/settings", { method: "PUT", body: JSON.stringify({ reminder_time: reminderTime, language: selectedLanguage }) })
+    apiFetch("/api/settings", { method: "PUT", body: JSON.stringify({ reminder_times: reminderTimes, reminder_days: reminderDays, language: selectedLanguage }) })
       .then(function () {
         haptic("notificationSuccess");
         settingsOriginalLanguage = selectedLanguage;
@@ -263,6 +279,43 @@
       .finally(function () {
         submitButton.disabled = false;
       });
+  }
+
+  function renderReminderTimes(times) {
+    reminderTimesEl.replaceChildren();
+    (times.length ? times : ["09:00"]).forEach(addReminderTimeRow);
+  }
+
+  function addReminderTimeRow(value) {
+    const row = document.createElement("div");
+    row.className = "reminder-time-row";
+    const input = document.createElement("input");
+    input.type = "time";
+    input.required = true;
+    input.value = value;
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "language-option remove-reminder-time";
+    remove.textContent = t("removeReminderTime");
+    remove.setAttribute("aria-label", t("removeReminderTime"));
+    remove.addEventListener("click", function () {
+      if (reminderTimesEl.children.length > 1) {
+        row.remove();
+        updateReminderTimeRemoveButtons();
+      }
+    });
+    row.append(input, remove);
+    reminderTimesEl.append(row);
+    updateReminderTimeRemoveButtons();
+  }
+
+  function updateReminderTimeRemoveButtons() {
+    const canRemove = reminderTimesEl.children.length > 1;
+    reminderTimesEl.querySelectorAll(".remove-reminder-time").forEach(function (button) { button.disabled = !canRemove; });
+  }
+
+  function setReminderDays(days) {
+    reminderDayInputs.forEach(function (input) { input.checked = days.includes(Number(input.value)); });
   }
 
   function loadHomework() {
@@ -648,6 +701,10 @@
       const selected = button.dataset.language === language;
       button.classList.toggle("active", selected);
       button.setAttribute("aria-pressed", selected ? "true" : "false");
+    });
+    document.querySelectorAll(".remove-reminder-time").forEach(function (button) {
+      button.textContent = t("removeReminderTime");
+      button.setAttribute("aria-label", t("removeReminderTime"));
     });
     if (editingId) {
       formTitleEl.textContent = t("editTask", { id: editingId });

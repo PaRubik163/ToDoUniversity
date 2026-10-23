@@ -349,9 +349,10 @@ func (b *Bot) setReminderTimeText(ctx context.Context, chatID int64, text string
 
 func (b *Bot) setReminderTime(ctx context.Context, chatID int64, hour, minute int) error {
 	_, err := b.db.ExecContext(ctx, `
-		INSERT INTO user_settings (chat_id, reminder_hour, reminder_minute, updated_at)
-		VALUES ($1, $2, $3, now())
-		ON CONFLICT (chat_id) DO UPDATE SET reminder_hour = $2, reminder_minute = $3, updated_at = now()`,
+		INSERT INTO user_settings (chat_id, reminder_hour, reminder_minute, reminder_times, updated_at)
+		VALUES ($1, $2, $3, ARRAY[make_time($2, $3, 0)], now())
+		ON CONFLICT (chat_id) DO UPDATE SET reminder_hour = $2, reminder_minute = $3,
+			reminder_times = ARRAY[make_time($2, $3, 0)], updated_at = now()`,
 		chatID, hour, minute)
 	return err
 }
@@ -429,14 +430,17 @@ func (b *Bot) reminderLoop(ctx context.Context) {
 
 func (b *Bot) sendDueReminders(ctx context.Context, hour, minute int) {
 	rows, err := b.db.QueryContext(ctx, `
-		SELECT h.id, h.chat_id, h.subject, h.title, h.deadline
+		SELECT h.id, h.chat_id, h.subject, h.title, h.deadline,
+			array_to_json(COALESCE(s.reminder_days, ARRAY[7]::smallint[]))::text
 		FROM homework h
 		LEFT JOIN user_settings s ON s.chat_id = h.chat_id
 		LEFT JOIN homework_status hs ON hs.homework_id = h.id
-		WHERE COALESCE(s.reminder_hour, 9) = $1
-		  AND COALESCE(s.reminder_minute, 0) = $2
+		WHERE EXISTS (
+			SELECT 1 FROM unnest(COALESCE(s.reminder_times, ARRAY['09:00'::TIME])) AS configured(time_value)
+			WHERE configured.time_value = make_time($1, $2, 0)
+		  )
 		  AND COALESCE(hs.is_completed, FALSE) = FALSE
-		  AND h.deadline < now() + interval '8 days'
+		  AND h.deadline < now() + interval '15 days'
 		ORDER BY h.deadline`, hour, minute)
 	if err != nil {
 		log.Printf("reminder query: %v", err)
@@ -444,18 +448,34 @@ func (b *Bot) sendDueReminders(ctx context.Context, hour, minute int) {
 	}
 	defer rows.Close()
 	today := time.Now().In(b.config.TZ).Format("2006-01-02")
+	reminderTime := fmt.Sprintf("%02d:%02d", hour, minute)
 	for rows.Next() {
 		var item homework
 		var chatID int64
-		if err := rows.Scan(&item.ID, &chatID, &item.Subject, &item.Title, &item.Deadline); err != nil {
+		var reminderDaysJSON string
+		if err := rows.Scan(&item.ID, &chatID, &item.Subject, &item.Title, &item.Deadline, &reminderDaysJSON); err != nil {
 			log.Print(err)
 			continue
 		}
 		days := calendarDays(time.Now().In(b.config.TZ), item.Deadline.In(b.config.TZ), b.config.TZ)
-		if days > 7 {
-			continue
+		if days > 0 {
+			var configuredDays []int
+			if err := json.Unmarshal([]byte(reminderDaysJSON), &configuredDays); err != nil {
+				log.Printf("decode reminder days: %v", err)
+				continue
+			}
+			selected := false
+			for _, configuredDay := range configuredDays {
+				if days == configuredDay {
+					selected = true
+					break
+				}
+			}
+			if !selected {
+				continue
+			}
 		}
-		result, err := b.db.ExecContext(ctx, `INSERT INTO reminder_log (homework_id, reminder_date) VALUES ($1, $2) ON CONFLICT DO NOTHING`, item.ID, today)
+		result, err := b.db.ExecContext(ctx, `INSERT INTO reminder_log (homework_id, reminder_date, reminder_time) VALUES ($1, $2, $3::time) ON CONFLICT DO NOTHING`, item.ID, today, reminderTime)
 		if err != nil {
 			log.Print(err)
 			continue
