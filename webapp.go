@@ -428,6 +428,7 @@ type apiSettings struct {
 	ReminderTimes []string `json:"reminder_times"` // HH:MM, 24h
 	ReminderDays  []int    `json:"reminder_days"`
 	Language      string   `json:"language"`
+	DesignTheme   string   `json:"design_theme"`
 }
 
 func (b *Bot) handleSettings(w http.ResponseWriter, r *http.Request, userID int64) {
@@ -445,16 +446,17 @@ func (b *Bot) apiGetSettings(w http.ResponseWriter, r *http.Request, userID int6
 	var timesJSON string
 	var daysJSON string
 	var language string
+	var theme string
 	err := b.db.QueryRowContext(r.Context(),
-		`SELECT array_to_json(reminder_times)::text, array_to_json(reminder_days)::text, language FROM user_settings WHERE chat_id = $1`, userID,
-	).Scan(&timesJSON, &daysJSON, &language)
+		`SELECT array_to_json(reminder_times)::text, array_to_json(reminder_days)::text, language, design_theme FROM user_settings WHERE chat_id = $1`, userID,
+	).Scan(&timesJSON, &daysJSON, &language, &theme)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
 			log.Printf("get settings: %v", err)
 			http.Error(w, "database error", http.StatusInternalServerError)
 			return
 		}
-		timesJSON, daysJSON, language = `["09:00:00"]`, `[7]`, "ru"
+		timesJSON, daysJSON, language, theme = `["09:00:00"]`, `[7]`, "ru", "classic"
 	}
 	var dbTimes []string
 	var days []int
@@ -480,7 +482,7 @@ func (b *Bot) apiGetSettings(w http.ResponseWriter, r *http.Request, userID int6
 		}
 		dbTimes[i] = parsed.Format("15:04")
 	}
-	writeJSON(w, apiSettings{ReminderTimes: dbTimes, ReminderDays: days, Language: language})
+	writeJSON(w, apiSettings{ReminderTimes: dbTimes, ReminderDays: days, Language: language, DesignTheme: theme})
 }
 
 func (b *Bot) apiPutSettings(w http.ResponseWriter, r *http.Request, userID int64) {
@@ -532,32 +534,45 @@ func (b *Bot) apiPutSettings(w http.ResponseWriter, r *http.Request, userID int6
 		http.Error(w, "language must be ru or en", http.StatusBadRequest)
 		return
 	}
+	req.DesignTheme = strings.TrimSpace(req.DesignTheme)
+	if req.DesignTheme != "" && req.DesignTheme != "classic" && req.DesignTheme != "neon" {
+		http.Error(w, "design_theme must be classic or neon", http.StatusBadRequest)
+		return
+	}
 	language := req.Language
-	if language == "" {
-		err := b.db.QueryRowContext(r.Context(), `SELECT language FROM user_settings WHERE chat_id = $1`, userID).Scan(&language)
+	theme := req.DesignTheme
+	if language == "" || theme == "" {
+		var currentLanguage, currentTheme string
+		err := b.db.QueryRowContext(r.Context(), `SELECT language, design_theme FROM user_settings WHERE chat_id = $1`, userID).Scan(&currentLanguage, &currentTheme)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			log.Printf("get language setting: %v", err)
+			log.Printf("get settings before update: %v", err)
 			http.Error(w, "database error", http.StatusInternalServerError)
 			return
 		}
 		if errors.Is(err, sql.ErrNoRows) {
-			language = "ru"
+			currentLanguage, currentTheme = "ru", "classic"
+		}
+		if language == "" {
+			language = currentLanguage
+		}
+		if theme == "" {
+			theme = currentTheme
 		}
 	}
 	_, err := b.db.ExecContext(r.Context(), `
-		INSERT INTO user_settings (chat_id, reminder_hour, reminder_minute, reminder_times, reminder_days, language, updated_at)
-		VALUES ($1, $2, $3, string_to_array($4, ',')::time[], string_to_array($5, ',')::smallint[], $6, now())
+		INSERT INTO user_settings (chat_id, reminder_hour, reminder_minute, reminder_times, reminder_days, language, design_theme, updated_at)
+		VALUES ($1, $2, $3, string_to_array($4, ',')::time[], string_to_array($5, ',')::smallint[], $6, $7, now())
 		ON CONFLICT (chat_id) DO UPDATE SET
 			reminder_hour = $2, reminder_minute = $3,
 			reminder_times = string_to_array($4, ',')::time[], reminder_days = string_to_array($5, ',')::smallint[],
-			language = $6, updated_at = now()`,
-		userID, mustParseClock(times[0]), mustParseClockMinute(times[0]), strings.Join(times, ","), strings.Join(days, ","), language)
+			language = $6, design_theme = $7, updated_at = now()`,
+		userID, mustParseClock(times[0]), mustParseClockMinute(times[0]), strings.Join(times, ","), strings.Join(days, ","), language, theme)
 	if err != nil {
 		log.Printf("put settings: %v", err)
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, apiSettings{ReminderTimes: times, ReminderDays: req.ReminderDays, Language: language})
+	writeJSON(w, apiSettings{ReminderTimes: times, ReminderDays: req.ReminderDays, Language: language, DesignTheme: theme})
 }
 
 func mustParseClock(value string) int {

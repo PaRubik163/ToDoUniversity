@@ -6,6 +6,7 @@
       appTitle: "Задания", settingsAria: "Настройки", addTaskAria: "Добавить задание",
       settingsTitle: "Настройки", reminderDaysLabel: "Напоминать за", days14: "14 дней", days7: "7 дней", days3: "3 дня", days1: "1 день",
       reminderTimesLabel: "Время напоминаний каждый день", addReminderTime: "Добавить время", removeReminderTime: "Удалить время", languageLabel: "Язык",
+      designLabel: "Оформление", designClassic: "Текущее", designNeon: "Неоновое",
       cancel: "Отмена", save: "Сохранить", saveChanges: "Сохранить изменения",
       newTask: "Новое задание", subject: "Предмет", subjectPlaceholder: "Разработка безопасного ПО",
       task: "Задание", taskPlaceholder: "Практическая 1", deadline: "Дедлайн",
@@ -32,6 +33,7 @@
       appTitle: "Tasks", settingsAria: "Settings", addTaskAria: "Add task",
       settingsTitle: "Settings", reminderDaysLabel: "Remind me", days14: "14 days before", days7: "7 days before", days3: "3 days before", days1: "1 day before",
       reminderTimesLabel: "Reminder times each day", addReminderTime: "Add time", removeReminderTime: "Remove time", languageLabel: "Language",
+      designLabel: "Appearance", designClassic: "Current", designNeon: "Neon",
       cancel: "Cancel", save: "Save", saveChanges: "Save changes",
       newTask: "New task", subject: "Subject", subjectPlaceholder: "Secure Software Development",
       task: "Task", taskPlaceholder: "Assignment 1", deadline: "Deadline",
@@ -92,6 +94,8 @@
   const reminderTimesEl = document.getElementById("reminder-times");
   const addReminderTimeEl = document.getElementById("add-reminder-time");
   const reminderDayInputs = Array.from(document.querySelectorAll('input[name="reminder-day"]'));
+  const themeButtons = Array.from(document.querySelectorAll(".theme-option"));
+  const neonThemeStylesheet = document.getElementById("neon-theme-stylesheet");
   const languageButtons = Array.from(document.querySelectorAll(".language-option"));
 
   let editingId = null;
@@ -100,6 +104,8 @@
   let selectedMonth = "";
   let language = "ru";
   let settingsOriginalLanguage = "ru";
+  let designTheme = "classic";
+  let settingsOriginalTheme = "classic";
   let languageTouched = false;
   let analyticsData = null;
 
@@ -134,6 +140,12 @@
       languageTouched = true;
       language = button.dataset.language;
       applyLanguage();
+    });
+  });
+  themeButtons.forEach(function (button) {
+    button.addEventListener("click", function () {
+      designTheme = button.dataset.theme;
+      applyDesignTheme();
     });
   });
   addReminderTimeEl.addEventListener("click", function () {
@@ -193,6 +205,8 @@
   cancelSettingsEl.addEventListener("click", function () {
     hideSettingsError();
     language = settingsOriginalLanguage;
+    designTheme = settingsOriginalTheme;
+    applyDesignTheme();
     languageTouched = false;
     applyLanguage();
     settingsFormEl.classList.add("hidden");
@@ -207,7 +221,7 @@
       showSettingsError(t("timeRequired"));
       return;
     }
-    saveSettings(reminderTimes, reminderDays, language);
+    saveSettings(reminderTimes, reminderDays, language, designTheme);
   });
 
   function openAddForm() {
@@ -244,12 +258,16 @@
     hideSettingsError();
     languageTouched = false;
     settingsOriginalLanguage = language;
+    settingsOriginalTheme = designTheme;
     settingsFormEl.classList.remove("hidden");
     reminderTimesEl.replaceChildren();
     apiFetch("/api/settings")
       .then(function (settings) {
         renderReminderTimes((settings && settings.reminder_times) || ["09:00"]);
         setReminderDays((settings && settings.reminder_days) || [7]);
+        designTheme = (settings && settings.design_theme) || "classic";
+        settingsOriginalTheme = designTheme;
+        applyDesignTheme();
         if (!languageTouched) {
           settingsOriginalLanguage = (settings && settings.language) || language;
           language = settingsOriginalLanguage;
@@ -259,17 +277,21 @@
       .catch(function () {
         renderReminderTimes(["09:00"]);
         setReminderDays([7]);
+        designTheme = "classic";
+        settingsOriginalTheme = designTheme;
+        applyDesignTheme();
         settingsOriginalLanguage = language;
       });
   }
 
-  function saveSettings(reminderTimes, reminderDays, selectedLanguage) {
+  function saveSettings(reminderTimes, reminderDays, selectedLanguage, selectedTheme) {
     const submitButton = settingsFormEl.querySelector('button[type="submit"]');
     submitButton.disabled = true;
-    apiFetch("/api/settings", { method: "PUT", body: JSON.stringify({ reminder_times: reminderTimes, reminder_days: reminderDays, language: selectedLanguage }) })
+    apiFetch("/api/settings", { method: "PUT", body: JSON.stringify({ reminder_times: reminderTimes, reminder_days: reminderDays, language: selectedLanguage, design_theme: selectedTheme }) })
       .then(function () {
         haptic("notificationSuccess");
         settingsOriginalLanguage = selectedLanguage;
+        settingsOriginalTheme = selectedTheme;
         languageTouched = false;
         settingsFormEl.classList.add("hidden");
       })
@@ -279,6 +301,17 @@
       .finally(function () {
         submitButton.disabled = false;
       });
+  }
+
+  function applyDesignTheme() {
+    const neon = designTheme === "neon";
+    neonThemeStylesheet.disabled = !neon;
+    document.body.dataset.theme = designTheme;
+    themeButtons.forEach(function (button) {
+      const selected = button.dataset.theme === designTheme;
+      button.classList.toggle("active", selected);
+      button.setAttribute("aria-pressed", selected ? "true" : "false");
+    });
   }
 
   function renderReminderTimes(times) {
@@ -324,6 +357,9 @@
       .then(function (results) {
         homeworkItems = results[0] || [];
         language = results[2].language || "ru";
+        designTheme = results[2].design_theme || "classic";
+        settingsOriginalTheme = designTheme;
+        applyDesignTheme();
         settingsOriginalLanguage = language;
         languageTouched = false;
         applyLanguage();

@@ -8,7 +8,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<link id="neon-theme-stylesheet" rel="stylesheet" href="neon-theme.css" disabled>
 </head>
 <body>
 <div class="app">
@@ -41,6 +43,13 @@
       <div class="language-picker" role="group" aria-label="Язык интерфейса" data-i18n-aria="languageLabel">
         <button id="language-ru" class="language-option" type="button" data-language="ru">Русский</button>
         <button id="language-en" class="language-option" type="button" data-language="en">English</button>
+      </div>
+    </div>
+    <div class="theme-setting">
+      <span class="language-label" data-i18n="designLabel">Оформление</span>
+      <div class="language-picker theme-picker" role="group" aria-label="Оформление" data-i18n-aria="designLabel">
+        <button class="theme-option" type="button" data-theme="classic" data-i18n="designClassic">Текущее</button>
+        <button class="theme-option" type="button" data-theme="neon" data-i18n="designNeon">Неоновое</button>
       </div>
     </div>
     <div class="form-actions">
