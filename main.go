@@ -53,10 +53,11 @@ type Message struct {
 }
 
 type homework struct {
-	ID       int64
-	Subject  string
-	Title    string
-	Deadline time.Time
+	ID           int64
+	Subject      string
+	Title        string
+	Deadline     time.Time
+	ReminderDays []int
 }
 
 func main() {
