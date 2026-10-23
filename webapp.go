@@ -513,8 +513,8 @@ func (b *Bot) apiPutSettings(w http.ResponseWriter, r *http.Request, userID int6
 		times = append(times, value)
 	}
 	req.Language = strings.TrimSpace(req.Language)
-	if req.Language != "" && req.Language != "ru" && req.Language != "en" {
-		http.Error(w, "language must be ru or en", http.StatusBadRequest)
+	if req.Language != "" && !validLanguage(req.Language) {
+		http.Error(w, "unsupported language", http.StatusBadRequest)
 		return
 	}
 	req.DesignTheme = strings.TrimSpace(req.DesignTheme)
@@ -556,6 +556,15 @@ func (b *Bot) apiPutSettings(w http.ResponseWriter, r *http.Request, userID int6
 		return
 	}
 	writeJSON(w, apiSettings{ReminderTimes: times, Language: language, DesignTheme: theme})
+}
+
+func validLanguage(language string) bool {
+	switch language {
+	case "ru", "en", "zh", "es", "ar", "hy":
+		return true
+	default:
+		return false
+	}
 }
 
 func mustParseClock(value string) int {

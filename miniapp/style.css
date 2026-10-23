@@ -257,6 +257,7 @@ body {
 .language-setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .language-label { color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .045em; text-transform: uppercase; }
 .language-picker { display: flex; gap: 6px; }
+.language-select { width: auto; min-width: 150px; min-height: 38px !important; padding: 7px 30px 7px 10px !important; border: 1px solid var(--line) !important; border-radius: 3px !important; background-color: var(--surface-raised) !important; color: var(--ink) !important; font: 600 12px "Manrope", sans-serif !important; }
 .language-option, .theme-option {
   padding: 7px 11px;
   border: 1px solid var(--line);

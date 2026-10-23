@@ -31,9 +31,15 @@
     </fieldset>
     <div class="language-setting">
       <span class="language-label" data-i18n="languageLabel">Язык</span>
-      <div class="language-picker" role="group" aria-label="Язык" data-i18n-aria="languageLabel">
-        <button id="language-ru" class="language-option" type="button" data-language="ru">Русский</button>
-        <button id="language-en" class="language-option" type="button" data-language="en">English</button>
+      <div class="language-picker">
+        <select id="language-select" class="language-select" aria-label="Язык" data-i18n-aria="languageLabel">
+          <option value="ru">Русский</option>
+          <option value="en">English</option>
+          <option value="zh">中文</option>
+          <option value="es">Español</option>
+          <option value="ar">العربية</option>
+          <option value="hy">Հայերեն</option>
+        </select>
       </div>
     </div>
     <div class="theme-setting">

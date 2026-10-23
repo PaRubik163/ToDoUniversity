@@ -55,6 +55,70 @@
       weekRange: "Week: {from} — {to}", monthGraphTitle: "Completed by day — {month}",
       weekChartAria: "Tasks completed this week", monthChartAria: "Tasks completed in selected month",
       chartCount: "{date}: {count}"
+    },
+    zh: {
+      appTitle: "任务", settingsAria: "设置", addTaskAria: "添加任务", settingsTitle: "设置", reminderDaysLabel: "提前提醒",
+      days14: "提前14天", days7: "提前7天", days3: "提前3天", days1: "提前1天", reminderTimesLabel: "每日提醒时间",
+      addReminderTime: "添加时间", removeReminderTime: "删除时间", languageLabel: "语言", designLabel: "外观", designClassic: "经典", designNeon: "霓虹",
+      cancel: "取消", save: "保存", saveChanges: "保存更改", newTask: "新任务", subject: "课程", subjectPlaceholder: "软件开发",
+      task: "任务", taskPlaceholder: "作业1", deadline: "截止日期", sectionsAria: "任务分类", uncompleted: "待办", completed: "已完成",
+      overdue: "已逾期", analytics: "统计", previousMonth: "上个月", nextMonth: "下个月", analyticsMonth: "统计月份",
+      doneThisWeek: "本周完成", doneThisMonth: "本月完成", uncompletedTotal: "待办总数", overdueTotal: "逾期总数", currentWeek: "本周",
+      loading: "加载中…", openTelegram: "请通过 Telegram 打开应用以查看任务。", fillAll: "请填写所有字段。", timeRequired: "请至少选择一个提醒时间。",
+      loadTasksError: "无法加载任务：", loadAnalyticsError: "无法加载统计：", deleteError: "无法删除：", statusError: "无法更新状态：",
+      deleteConfirm: "确定删除此任务吗？", noCompleted: "还没有已完成的任务。", noOverdue: "没有逾期任务。", noUncompleted: "没有待办任务。点击“+”添加。",
+      editTask: "编辑任务 №{id}", doneDate: "完成于：{date}", done: "已完成", undoDone: "移回待办", markDone: "标记为完成",
+      overdueBy: "逾期 {days}{unit}", editTaskAria: "编辑任务", deleteTaskAria: "删除任务", dueToday: "今天截止", daysLeft: "还剩 {days}{unit}",
+      dayUnit: "天", dayUnitOne: "天", dayUnitFew: "天", weekRange: "本周：{from} — {to}", monthGraphTitle: "每日完成情况 — {month}",
+      weekChartAria: "本周完成的任务", monthChartAria: "所选月份完成的任务", chartCount: "{date}：{count}"
+    },
+    es: {
+      appTitle: "Tareas", settingsAria: "Ajustes", addTaskAria: "Añadir tarea", settingsTitle: "Ajustes", reminderDaysLabel: "Avisar con",
+      days14: "14 días antes", days7: "7 días antes", days3: "3 días antes", days1: "1 día antes", reminderTimesLabel: "Hora diaria de los avisos",
+      addReminderTime: "Añadir hora", removeReminderTime: "Quitar hora", languageLabel: "Idioma", designLabel: "Apariencia", designClassic: "Clásico", designNeon: "Neón",
+      cancel: "Cancelar", save: "Guardar", saveChanges: "Guardar cambios", newTask: "Nueva tarea", subject: "Asignatura", subjectPlaceholder: "Desarrollo de software",
+      task: "Tarea", taskPlaceholder: "Práctica 1", deadline: "Fecha límite", sectionsAria: "Secciones de tareas", uncompleted: "Pendientes", completed: "Completadas",
+      overdue: "Atrasadas", analytics: "Estadísticas", previousMonth: "Mes anterior", nextMonth: "Mes siguiente", analyticsMonth: "Mes de estadísticas",
+      doneThisWeek: "Completadas esta semana", doneThisMonth: "Completadas este mes", uncompletedTotal: "Pendientes", overdueTotal: "Atrasadas", currentWeek: "Esta semana",
+      loading: "Cargando…", openTelegram: "Abre esta aplicación desde Telegram para ver tus tareas.", fillAll: "Completa todos los campos.", timeRequired: "Elige al menos una hora de aviso.",
+      loadTasksError: "No se pudieron cargar las tareas: ", loadAnalyticsError: "No se pudieron cargar las estadísticas: ", deleteError: "No se pudo eliminar: ", statusError: "No se pudo actualizar el estado: ",
+      deleteConfirm: "¿Eliminar esta tarea?", noCompleted: "Aún no hay tareas completadas.", noOverdue: "No hay tareas atrasadas.", noUncompleted: "No hay tareas pendientes. Pulsa «+» para añadir una.",
+      editTask: "Editar tarea n.º {id}", doneDate: "Completada: {date}", done: "Completada", undoDone: "Volver a pendientes", markDone: "Marcar como completada",
+      overdueBy: "con {days} {unit} de retraso", editTaskAria: "Editar tarea", deleteTaskAria: "Eliminar tarea", dueToday: "vence hoy", daysLeft: "quedan {days} {unit}",
+      dayUnit: "días", dayUnitOne: "día", dayUnitFew: "días", weekRange: "Semana: {from} — {to}", monthGraphTitle: "Tareas completadas por día — {month}",
+      weekChartAria: "Tareas completadas esta semana", monthChartAria: "Tareas completadas en el mes seleccionado", chartCount: "{date}: {count}"
+    },
+    ar: {
+      appTitle: "المهام", settingsAria: "الإعدادات", addTaskAria: "إضافة مهمة", settingsTitle: "الإعدادات", reminderDaysLabel: "التذكير قبل",
+      days14: "قبل 14 يومًا", days7: "قبل 7 أيام", days3: "قبل 3 أيام", days1: "قبل يوم", reminderTimesLabel: "وقت التذكير اليومي",
+      addReminderTime: "إضافة وقت", removeReminderTime: "حذف الوقت", languageLabel: "اللغة", designLabel: "المظهر", designClassic: "كلاسيكي", designNeon: "نيون",
+      cancel: "إلغاء", save: "حفظ", saveChanges: "حفظ التغييرات", newTask: "مهمة جديدة", subject: "المادة", subjectPlaceholder: "تطوير البرمجيات",
+      task: "المهمة", taskPlaceholder: "واجب 1", deadline: "الموعد النهائي", sectionsAria: "أقسام المهام", uncompleted: "قيد الإنجاز", completed: "مكتملة",
+      overdue: "متأخرة", analytics: "الإحصاءات", previousMonth: "الشهر السابق", nextMonth: "الشهر التالي", analyticsMonth: "شهر الإحصاءات",
+      doneThisWeek: "المكتمل هذا الأسبوع", doneThisMonth: "المكتمل هذا الشهر", uncompletedTotal: "المهام المتبقية", overdueTotal: "المهام المتأخرة", currentWeek: "هذا الأسبوع",
+      loading: "جارٍ التحميل…", openTelegram: "افتح التطبيق من Telegram لعرض مهامك.", fillAll: "يرجى ملء جميع الحقول.", timeRequired: "اختر وقت تذكير واحدًا على الأقل.",
+      loadTasksError: "تعذر تحميل المهام: ", loadAnalyticsError: "تعذر تحميل الإحصاءات: ", deleteError: "تعذر الحذف: ", statusError: "تعذر تحديث الحالة: ",
+      deleteConfirm: "هل تريد حذف هذه المهمة؟", noCompleted: "لا توجد مهام مكتملة بعد.", noOverdue: "لا توجد مهام متأخرة.", noUncompleted: "لا توجد مهام قيد الإنجاز. اضغط «+» لإضافة مهمة.",
+      editTask: "تعديل المهمة رقم {id}", doneDate: "اكتملت: {date}", done: "مكتملة", undoDone: "إعادتها إلى المهام الجارية", markDone: "وضع علامة مكتملة",
+      overdueBy: "متأخرة {days} {unit}", editTaskAria: "تعديل المهمة", deleteTaskAria: "حذف المهمة", dueToday: "موعدها اليوم", daysLeft: "متبقي {days} {unit}",
+      dayUnit: "أيام", dayUnitOne: "يوم", dayUnitFew: "أيام", weekRange: "الأسبوع: {from} — {to}", monthGraphTitle: "المهام المكتملة يوميًا — {month}",
+      weekChartAria: "المهام المكتملة هذا الأسبوع", monthChartAria: "المهام المكتملة في الشهر المحدد", chartCount: "{date}: {count}"
+    },
+    hy: {
+      appTitle: "Առաջադրանքներ", settingsAria: "Կարգավորումներ", addTaskAria: "Ավելացնել առաջադրանք", settingsTitle: "Կարգավորումներ", reminderDaysLabel: "Հիշեցնել առաջ",
+      days14: "14 օր առաջ", days7: "7 օր առաջ", days3: "3 օր առաջ", days1: "1 օր առաջ", reminderTimesLabel: "Ամենօրյա հիշեցման ժամերը",
+      addReminderTime: "Ավելացնել ժամ", removeReminderTime: "Հեռացնել ժամը", languageLabel: "Լեզու", designLabel: "Տեսք", designClassic: "Դասական", designNeon: "Նեոնային",
+      cancel: "Չեղարկել", save: "Պահպանել", saveChanges: "Պահպանել փոփոխությունները", newTask: "Նոր առաջադրանք", subject: "Առարկա", subjectPlaceholder: "Ծրագրային ապահովման մշակում",
+      task: "Առաջադրանք", taskPlaceholder: "Գործնական աշխատանք 1", deadline: "Վերջնաժամկետ", sectionsAria: "Առաջադրանքների բաժիններ", uncompleted: "Չկատարված", completed: "Կատարված",
+      overdue: "Ժամկետանց", analytics: "Վիճակագրություն", previousMonth: "Նախորդ ամիս", nextMonth: "Հաջորդ ամիս", analyticsMonth: "Վիճակագրության ամիս",
+      doneThisWeek: "Կատարված այս շաբաթ", doneThisMonth: "Կատարված այս ամիս", uncompletedTotal: "Չկատարված ընդհանուր", overdueTotal: "Ժամկետանց ընդհանուր", currentWeek: "Այս շաբաթ",
+      loading: "Բեռնվում է…", openTelegram: "Առաջադրանքները տեսնելու համար բացեք հավելվածը Telegram-ում։", fillAll: "Լրացրեք բոլոր դաշտերը։", timeRequired: "Ընտրեք առնվազն մեկ հիշեցման ժամ։",
+      loadTasksError: "Չհաջողվեց բեռնել առաջադրանքները․ ", loadAnalyticsError: "Չհաջողվեց բեռնել վիճակագրությունը․ ", deleteError: "Չհաջողվեց ջնջել․ ", statusError: "Չհաջողվեց փոխել կարգավիճակը․ ",
+      deleteConfirm: "Ջնջե՞լ այս առաջադրանքը։", noCompleted: "Կատարված առաջադրանքներ դեռ չկան։", noOverdue: "Ժամկետանց առաջադրանքներ չկան։", noUncompleted: "Չկատարված առաջադրանքներ չկան։ Սեղմեք «+»՝ ավելացնելու համար։",
+      editTask: "Խմբագրել առաջադրանք №{id}", doneDate: "Կատարված է՝ {date}", done: "Կատարված է", undoDone: "Վերադարձնել չկատարվածների մեջ", markDone: "Նշել որպես կատարված",
+      overdueBy: "ուշացել է {days} {unit}-ով", editTaskAria: "Խմբագրել առաջադրանքը", deleteTaskAria: "Ջնջել առաջադրանքը", dueToday: "ժամկետը այսօր է", daysLeft: "մնացել է {days} {unit}",
+      dayUnit: "օր", dayUnitOne: "օր", dayUnitFew: "օր", weekRange: "Շաբաթ՝ {from} — {to}", monthGraphTitle: "Օրվա ընթացքում կատարված — {month}",
+      weekChartAria: "Այս շաբաթ կատարված առաջադրանքները", monthChartAria: "Ընտրված ամսում կատարված առաջադրանքները", chartCount: "{date}՝ {count}"
     }
   };
 
@@ -97,7 +161,7 @@
   const addReminderTimeEl = document.getElementById("add-reminder-time");
   const themeButtons = Array.from(document.querySelectorAll(".theme-option"));
   const neonThemeStylesheet = document.getElementById("neon-theme-stylesheet");
-  const languageButtons = Array.from(document.querySelectorAll(".language-option"));
+  const languageSelectEl = document.getElementById("language-select");
 
   let editingId = null;
   let currentSection = "uncompleted";
@@ -136,12 +200,10 @@
   });
   monthPrevEl.addEventListener("click", function () { shiftSelectedMonth(-1); });
   monthNextEl.addEventListener("click", function () { shiftSelectedMonth(1); });
-  languageButtons.forEach(function (button) {
-    button.addEventListener("click", function () {
-      languageTouched = true;
-      language = button.dataset.language;
-      applyLanguage();
-    });
+  languageSelectEl.addEventListener("change", function () {
+    languageTouched = true;
+    language = languageSelectEl.value;
+    applyLanguage();
   });
   themeButtons.forEach(function (button) {
     button.addEventListener("click", function () {
@@ -514,7 +576,11 @@
   function formatMonth(month) {
     const parts = month.split("-");
     return new Date(Number(parts[0]), Number(parts[1]) - 1, 1)
-      .toLocaleDateString(language === "en" ? "en-US" : "ru-RU", { month: "long", year: "numeric" });
+      .toLocaleDateString(languageLocale(), { month: "long", year: "numeric" });
+  }
+
+  function languageLocale() {
+    return { ru: "ru-RU", en: "en-US", zh: "zh-CN", es: "es-ES", ar: "ar", hy: "hy-AM" }[language] || "ru-RU";
   }
 
   function renderLineChart(container, days, showWeekday) {
@@ -586,7 +652,7 @@
         label.setAttribute("text-anchor", "middle");
         label.setAttribute("class", "chart-date-label");
         label.textContent = showWeekday
-          ? date.toLocaleDateString(language === "en" ? "en-US" : "ru-RU", { weekday: "short" })
+          ? date.toLocaleDateString(languageLocale(), { weekday: "short" })
           : String(date.getDate());
         svg.appendChild(label);
       }
@@ -698,6 +764,7 @@
 
   function dayUnit(days) {
     if (language === "en") return days === 1 ? t("dayUnitOne") : t("dayUnit");
+    if (language !== "ru") return days === 1 ? t("dayUnitOne") : t("dayUnit");
     const remainder = days % 10;
     const lastTwo = days % 100;
     if (remainder === 1 && lastTwo !== 11) return t("dayUnitOne");
@@ -735,7 +802,8 @@
   }
 
   function applyLanguage() {
-    document.documentElement.lang = language;
+    document.documentElement.lang = language === "zh" ? "zh-CN" : language === "ar" ? "ar" : language === "hy" ? "hy-AM" : language;
+    document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
     updateTaskReminderDisplay();
     document.title = t("appTitle");
     document.querySelectorAll("[data-i18n]").forEach(function (element) {
@@ -747,11 +815,7 @@
     document.querySelectorAll("[data-i18n-placeholder]").forEach(function (element) {
       element.setAttribute("placeholder", t(element.dataset.i18nPlaceholder));
     });
-    languageButtons.forEach(function (button) {
-      const selected = button.dataset.language === language;
-      button.classList.toggle("active", selected);
-      button.setAttribute("aria-pressed", selected ? "true" : "false");
-    });
+    languageSelectEl.value = language;
     document.querySelectorAll(".remove-reminder-time").forEach(function (button) {
       button.textContent = t("removeReminderTime");
       button.setAttribute("aria-label", t("removeReminderTime"));
