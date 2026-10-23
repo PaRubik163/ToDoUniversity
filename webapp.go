@@ -43,7 +43,8 @@ type createHomeworkRequest struct {
 }
 
 type telegramUser struct {
-	ID int64 `json:"id"`
+	ID           int64  `json:"id"`
+	LanguageCode string `json:"language_code"`
 }
 
 // startWebServer serves the Mini App static files and its JSON API. It blocks
@@ -463,7 +464,7 @@ func (b *Bot) apiGetSettings(w http.ResponseWriter, r *http.Request, userID int6
 			http.Error(w, "database error", http.StatusInternalServerError)
 			return
 		}
-		timesJSON, language, theme = `["09:00:00"]`, "ru", "classic"
+		timesJSON, language, theme = `["09:00:00"]`, telegramLanguageFromInitData(r.Header.Get("X-Telegram-Init-Data")), "classic"
 	}
 	var dbTimes []string
 	if err := json.Unmarshal([]byte(timesJSON), &dbTimes); err != nil {
@@ -533,7 +534,7 @@ func (b *Bot) apiPutSettings(w http.ResponseWriter, r *http.Request, userID int6
 			return
 		}
 		if errors.Is(err, sql.ErrNoRows) {
-			currentLanguage, currentTheme = "ru", "classic"
+			currentLanguage, currentTheme = telegramLanguageFromInitData(r.Header.Get("X-Telegram-Init-Data")), "classic"
 		}
 		if language == "" {
 			language = currentLanguage
@@ -556,6 +557,27 @@ func (b *Bot) apiPutSettings(w http.ResponseWriter, r *http.Request, userID int6
 		return
 	}
 	writeJSON(w, apiSettings{ReminderTimes: times, Language: language, DesignTheme: theme})
+}
+
+// telegramLanguageFromInitData reads the locale from Telegram's authenticated
+// Web App user object. English is the fallback for missing or unsupported locales.
+func telegramLanguageFromInitData(initData string) string {
+	values, err := url.ParseQuery(initData)
+	if err != nil {
+		return "en"
+	}
+	var user telegramUser
+	if err := json.Unmarshal([]byte(values.Get("user")), &user); err != nil {
+		return "en"
+	}
+	language := strings.ToLower(strings.TrimSpace(user.LanguageCode))
+	if i := strings.IndexAny(language, "-_"); i >= 0 {
+		language = language[:i]
+	}
+	if validLanguage(language) {
+		return language
+	}
+	return "en"
 }
 
 func validLanguage(language string) bool {

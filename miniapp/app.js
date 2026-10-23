@@ -168,8 +168,8 @@
   let currentSection = "uncompleted";
   let homeworkItems = [];
   let selectedMonth = "";
-  let language = "ru";
-  let settingsOriginalLanguage = "ru";
+  let language = telegramLanguage();
+  let settingsOriginalLanguage = language;
   let designTheme = "classic";
   let settingsOriginalTheme = "classic";
   let languageTouched = false;
@@ -433,7 +433,7 @@
     Promise.all([apiFetch("/api/homework"), fetchAnalytics(), apiFetch("/api/settings")])
       .then(function (results) {
         homeworkItems = results[0] || [];
-        language = results[2].language || "ru";
+        language = results[2].language || telegramLanguage();
         designTheme = results[2].design_theme || "classic";
         settingsOriginalTheme = designTheme;
         applyDesignTheme();
@@ -588,7 +588,14 @@
   }
 
   function languageLocale() {
-    return { ru: "ru-RU", en: "en-US", zh: "zh-CN", es: "es-ES", ar: "ar", hy: "hy-AM" }[language] || "ru-RU";
+    return { ru: "ru-RU", en: "en-US", zh: "zh-CN", es: "es-ES", ar: "ar", hy: "hy-AM" }[language] || "en-US";
+  }
+
+  function telegramLanguage() {
+    const code = tg && tg.initDataUnsafe && tg.initDataUnsafe.user
+      ? String(tg.initDataUnsafe.user.language_code || "").toLowerCase().split(/[-_]/)[0]
+      : "";
+    return ["ru", "en", "zh", "es", "ar", "hy"].includes(code) ? code : "en";
   }
 
   function renderLineChart(container, days, showWeekday) {

@@ -242,6 +242,9 @@ func (b *Bot) handleMessage(ctx context.Context, msg *Message) error {
 	text := strings.TrimSpace(msg.Text)
 	switch {
 	case text == "/start":
+		if _, err := b.db.ExecContext(ctx, `INSERT INTO user_settings (chat_id, language) VALUES ($1, $2) ON CONFLICT (chat_id) DO NOTHING`, msg.Chat.ID, normalizedLanguage(msg.From.LanguageCode)); err != nil {
+			log.Printf("save Telegram language: %v", err)
+		}
 		welcome, button := startCopy(msg.From.LanguageCode)
 		if b.config.MiniAppURL != "" {
 			if err := b.sendWebAppButton(ctx, msg.Chat.ID, welcome, button, b.config.MiniAppURL); err == nil {
@@ -296,11 +299,10 @@ func (b *Bot) handleMessage(ctx context.Context, msg *Message) error {
 // startCopy uses Telegram's language_code from the /start update. initData is
 // only available after the user has opened the Mini App.
 func startCopy(languageCode string) (message, button string) {
-	language := strings.ToLower(strings.TrimSpace(languageCode))
-	if i := strings.IndexAny(language, "-_"); i >= 0 {
-		language = language[:i]
-	}
+	language := normalizedLanguage(languageCode)
 	switch language {
+	case "ru":
+		return "Добавьте задачу и выберите время напоминания — бот поможет ничего не забыть. Чтобы начать, нажмите кнопку ниже.", "Открыть приложение"
 	case "en":
 		return "Add a task, choose when you’d like to be reminded, and the bot will help you stay on top of it. Tap the button below to get started.", "Open app"
 	case "zh":
@@ -312,8 +314,19 @@ func startCopy(languageCode string) (message, button string) {
 	case "hy":
 		return "Ավելացրեք առաջադրանք և ընտրեք հիշեցման ժամը․ բոտը կօգնի ձեզ ամեն ինչ ժամանակին հիշել։ Սկսելու համար սեղմեք ներքևի կոճակը։", "Բացել հավելվածը"
 	default:
-		return "Добавьте задачу и выберите время напоминания — бот поможет ничего не забыть. Чтобы начать, нажмите кнопку ниже.", "Открыть приложение"
+		return "Add a task, choose when you’d like to be reminded, and the bot will help you stay on top of it. Tap the button below to get started.", "Open app"
 	}
+}
+
+func normalizedLanguage(languageCode string) string {
+	language := strings.ToLower(strings.TrimSpace(languageCode))
+	if i := strings.IndexAny(language, "-_"); i >= 0 {
+		language = language[:i]
+	}
+	if validLanguage(language) {
+		return language
+	}
+	return "en"
 }
 
 func (b *Bot) deleteHomework(ctx context.Context, chatID int64, text string) error {
