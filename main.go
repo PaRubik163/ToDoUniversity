@@ -431,7 +431,7 @@ func (b *Bot) reminderLoop(ctx context.Context) {
 func (b *Bot) sendDueReminders(ctx context.Context, hour, minute int) {
 	rows, err := b.db.QueryContext(ctx, `
 		SELECT h.id, h.chat_id, h.subject, h.title, h.deadline,
-			array_to_json(COALESCE(s.reminder_days, ARRAY[7]::smallint[]))::text
+			array_to_json(COALESCE(h.reminder_days, ARRAY[7]::smallint[]))::text
 		FROM homework h
 		LEFT JOIN user_settings s ON s.chat_id = h.chat_id
 		LEFT JOIN homework_status hs ON hs.homework_id = h.id
@@ -440,7 +440,7 @@ func (b *Bot) sendDueReminders(ctx context.Context, hour, minute int) {
 			WHERE configured.time_value = make_time($1, $2, 0)
 		  )
 		  AND COALESCE(hs.is_completed, FALSE) = FALSE
-		  AND h.deadline < now() + interval '15 days'
+		  AND h.deadline < now() + interval '21 days'
 		ORDER BY h.deadline`, hour, minute)
 	if err != nil {
 		log.Printf("reminder query: %v", err)

@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Задания</title>
+<title>Р—Р°РґР°РЅРёСЏ</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,99 +15,97 @@
 <body>
 <div class="app">
   <header class="header">
-    <h1 id="app-title" data-i18n="appTitle">Задания</h1>
+    <h1 id="app-title" data-i18n="appTitle">Р—Р°РґР°РЅРёСЏ</h1>
     <div class="header-actions">
-      <button id="settings-toggle" class="icon-button icon-button--ghost" type="button" aria-label="Настройки" data-i18n-aria="settingsAria">⚙</button>
-      <button id="add-toggle" class="icon-button" type="button" aria-label="Добавить задание" data-i18n-aria="addTaskAria">+</button>
+      <button id="settings-toggle" class="icon-button icon-button--ghost" type="button" aria-label="РќР°СЃС‚СЂРѕР№РєРё" data-i18n-aria="settingsAria">вљ™</button>
+      <button id="add-toggle" class="icon-button" type="button" aria-label="Р”РѕР±Р°РІРёС‚СЊ Р·Р°РґР°РЅРёРµ" data-i18n-aria="addTaskAria">+</button>
     </div>
   </header>
 
   <form id="settings-form" class="add-form hidden">
-    <p class="form-title" data-i18n="settingsTitle">Настройки</p>
+    <p class="form-title" data-i18n="settingsTitle">РќР°СЃС‚СЂРѕР№РєРё</p>
     <fieldset class="reminder-setting">
-      <legend data-i18n="reminderDaysLabel">Напоминать за</legend>
-      <div class="reminder-day-options">
-        <label class="reminder-day-option"><input type="checkbox" name="reminder-day" value="14"><span data-i18n="days14">14 дней</span></label>
-        <label class="reminder-day-option"><input type="checkbox" name="reminder-day" value="7" checked><span data-i18n="days7">7 дней</span></label>
-        <label class="reminder-day-option"><input type="checkbox" name="reminder-day" value="3"><span data-i18n="days3">3 дня</span></label>
-        <label class="reminder-day-option"><input type="checkbox" name="reminder-day" value="1"><span data-i18n="days1">1 день</span></label>
-      </div>
-    </fieldset>
-    <fieldset class="reminder-setting">
-      <legend data-i18n="reminderTimesLabel">Время напоминаний каждый день</legend>
+      <legend data-i18n="reminderTimesLabel">Р’СЂРµРјСЏ РЅР°РїРѕРјРёРЅР°РЅРёР№ РєР°Р¶РґС‹Р№ РґРµРЅСЊ</legend>
       <div id="reminder-times" class="reminder-times"></div>
-      <button type="button" id="add-reminder-time" class="button secondary add-reminder-time" data-i18n="addReminderTime">Добавить время</button>
+      <button type="button" id="add-reminder-time" class="button secondary add-reminder-time" data-i18n="addReminderTime">Р”РѕР±Р°РІРёС‚СЊ РІСЂРµРјСЏ</button>
     </fieldset>
     <div class="language-setting">
-      <span class="language-label" data-i18n="languageLabel">Язык</span>
-      <div class="language-picker" role="group" aria-label="Язык интерфейса" data-i18n-aria="languageLabel">
-        <button id="language-ru" class="language-option" type="button" data-language="ru">Русский</button>
+      <span class="language-label" data-i18n="languageLabel">РЇР·С‹Рє</span>
+      <div class="language-picker" role="group" aria-label="РЇР·С‹Рє РёРЅС‚РµСЂС„РµР№СЃР°" data-i18n-aria="languageLabel">
+        <button id="language-ru" class="language-option" type="button" data-language="ru">Р СѓСЃСЃРєРёР№</button>
         <button id="language-en" class="language-option" type="button" data-language="en">English</button>
       </div>
     </div>
     <div class="theme-setting">
-      <span class="language-label" data-i18n="designLabel">Оформление</span>
-      <div class="language-picker theme-picker" role="group" aria-label="Оформление" data-i18n-aria="designLabel">
-        <button class="theme-option" type="button" data-theme="classic" data-i18n="designClassic">Рич</button>
-        <button class="theme-option" type="button" data-theme="neon" data-i18n="designNeon">Неоновое</button>
+      <span class="language-label" data-i18n="designLabel">РћС„РѕСЂРјР»РµРЅРёРµ</span>
+      <div class="language-picker theme-picker" role="group" aria-label="РћС„РѕСЂРјР»РµРЅРёРµ" data-i18n-aria="designLabel">
+        <button class="theme-option" type="button" data-theme="classic" data-i18n="designClassic">Р РёС‡</button>
+        <button class="theme-option" type="button" data-theme="neon" data-i18n="designNeon">РќРµРѕРЅРѕРІРѕРµ</button>
       </div>
     </div>
     <div class="form-actions">
-      <button type="button" id="cancel-settings" class="button secondary" data-i18n="cancel">Отмена</button>
-      <button type="submit" class="button primary" data-i18n="save">Сохранить</button>
+      <button type="button" id="cancel-settings" class="button secondary" data-i18n="cancel">РћС‚РјРµРЅР°</button>
+      <button type="submit" class="button primary" data-i18n="save">РЎРѕС…СЂР°РЅРёС‚СЊ</button>
     </div>
     <p id="settings-error" class="error hidden"></p>
   </form>
 
   <form id="add-form" class="add-form hidden">
-    <p id="form-title" class="form-title" data-i18n="newTask">Новое задание</p>
+    <p id="form-title" class="form-title" data-i18n="newTask">РќРѕРІРѕРµ Р·Р°РґР°РЅРёРµ</p>
     <label>
-      <span data-i18n="subject">Предмет</span>
-      <input id="field-subject" type="text" placeholder="Разработка безопасного ПО" data-i18n-placeholder="subjectPlaceholder" required maxlength="200">
+      <span data-i18n="subject">РџСЂРµРґРјРµС‚</span>
+      <input id="field-subject" type="text" placeholder="Р Р°Р·СЂР°Р±РѕС‚РєР° Р±РµР·РѕРїР°СЃРЅРѕРіРѕ РџРћ" data-i18n-placeholder="subjectPlaceholder" required maxlength="200">
     </label>
     <label>
-      <span data-i18n="task">Задание</span>
-      <input id="field-title" type="text" placeholder="Практическая 1" data-i18n-placeholder="taskPlaceholder" required maxlength="300">
+      <span data-i18n="task">Р—Р°РґР°РЅРёРµ</span>
+      <input id="field-title" type="text" placeholder="РџСЂР°РєС‚РёС‡РµСЃРєР°СЏ 1" data-i18n-placeholder="taskPlaceholder" required maxlength="300">
     </label>
     <label>
-      <span data-i18n="deadline">Дедлайн</span>
+      <span data-i18n="deadline">Р”РµРґР»Р°Р№РЅ</span>
       <input id="field-deadline" type="date" required>
     </label>
+    <fieldset class="reminder-setting task-reminder-setting">
+      <legend data-i18n="reminderDaysLabel">Напомнить за</legend>
+      <div class="task-reminder-control">
+        <input id="task-reminder-days" type="range" min="1" max="20" value="7" aria-describedby="task-reminder-value">
+        <output id="task-reminder-value" for="task-reminder-days" aria-live="polite">7</output>
+      </div>
+    </fieldset>
     <div class="form-actions">
-      <button type="button" id="cancel-add" class="button secondary" data-i18n="cancel">Отмена</button>
-      <button type="submit" class="button primary" data-i18n="save">Сохранить</button>
+      <button type="button" id="cancel-add" class="button secondary" data-i18n="cancel">РћС‚РјРµРЅР°</button>
+      <button type="submit" class="button primary" data-i18n="save">РЎРѕС…СЂР°РЅРёС‚СЊ</button>
     </div>
     <p id="form-error" class="error hidden"></p>
   </form>
 
   <p id="status" class="status"></p>
 
-  <nav class="sections" aria-label="Разделы заданий" data-i18n-aria="sectionsAria">
-    <button class="section-button active" type="button" data-section="uncompleted" data-i18n="uncompleted">Несделанные</button>
-    <button class="section-button" type="button" data-section="completed" data-i18n="completed">Сделанные</button>
-    <button class="section-button" type="button" data-section="overdue" data-i18n="overdue">Просроченные</button>
-    <button class="section-button" type="button" data-section="analytics" data-i18n="analytics">Аналитика</button>
+  <nav class="sections" aria-label="Р Р°Р·РґРµР»С‹ Р·Р°РґР°РЅРёР№" data-i18n-aria="sectionsAria">
+    <button class="section-button active" type="button" data-section="uncompleted" data-i18n="uncompleted">РќРµСЃРґРµР»Р°РЅРЅС‹Рµ</button>
+    <button class="section-button" type="button" data-section="completed" data-i18n="completed">РЎРґРµР»Р°РЅРЅС‹Рµ</button>
+    <button class="section-button" type="button" data-section="overdue" data-i18n="overdue">РџСЂРѕСЃСЂРѕС‡РµРЅРЅС‹Рµ</button>
+    <button class="section-button" type="button" data-section="analytics" data-i18n="analytics">РђРЅР°Р»РёС‚РёРєР°</button>
   </nav>
 
-  <section id="analytics" class="analytics hidden" aria-label="Аналитика" data-i18n-aria="analytics">
+  <section id="analytics" class="analytics hidden" aria-label="РђРЅР°Р»РёС‚РёРєР°" data-i18n-aria="analytics">
     <div class="month-filter">
-      <button id="month-prev" class="month-arrow" type="button" aria-label="Предыдущий месяц" data-i18n-aria="previousMonth">‹</button>
-      <label><span class="visually-hidden" data-i18n="analyticsMonth">Месяц аналитики</span><input id="month-picker" type="month"></label>
-      <button id="month-next" class="month-arrow" type="button" aria-label="Следующий месяц" data-i18n-aria="nextMonth">›</button>
+      <button id="month-prev" class="month-arrow" type="button" aria-label="РџСЂРµРґС‹РґСѓС‰РёР№ РјРµСЃСЏС†" data-i18n-aria="previousMonth">вЂ№</button>
+      <label><span class="visually-hidden" data-i18n="analyticsMonth">РњРµСЃСЏС† Р°РЅР°Р»РёС‚РёРєРё</span><input id="month-picker" type="month"></label>
+      <button id="month-next" class="month-arrow" type="button" aria-label="РЎР»РµРґСѓСЋС‰РёР№ РјРµСЃСЏС†" data-i18n-aria="nextMonth">вЂє</button>
     </div>
     <p id="week-range" class="week-range"></p>
     <div class="analytics-grid">
-      <article class="stat-card"><span data-i18n="doneThisWeek">Сделано за неделю</span><strong id="stat-completed">0</strong></article>
-      <article class="stat-card stat-card--month"><span data-i18n="doneThisMonth">Сделано за месяц</span><strong id="stat-month-completed">0</strong></article>
-      <article class="stat-card"><span data-i18n="uncompletedTotal">Несделано всего</span><strong id="stat-uncompleted">0</strong></article>
-      <article class="stat-card stat-card--overdue"><span data-i18n="overdueTotal">Просрочено</span><strong id="stat-overdue">0</strong></article>
+      <article class="stat-card"><span data-i18n="doneThisWeek">РЎРґРµР»Р°РЅРѕ Р·Р° РЅРµРґРµР»СЋ</span><strong id="stat-completed">0</strong></article>
+      <article class="stat-card stat-card--month"><span data-i18n="doneThisMonth">РЎРґРµР»Р°РЅРѕ Р·Р° РјРµСЃСЏС†</span><strong id="stat-month-completed">0</strong></article>
+      <article class="stat-card"><span data-i18n="uncompletedTotal">РќРµСЃРґРµР»Р°РЅРѕ РІСЃРµРіРѕ</span><strong id="stat-uncompleted">0</strong></article>
+      <article class="stat-card stat-card--overdue"><span data-i18n="overdueTotal">РџСЂРѕСЃСЂРѕС‡РµРЅРѕ</span><strong id="stat-overdue">0</strong></article>
     </div>
     <section class="chart-panel">
-      <h2 data-i18n="currentWeek">Текущая неделя</h2>
+      <h2 data-i18n="currentWeek">РўРµРєСѓС‰Р°СЏ РЅРµРґРµР»СЏ</h2>
       <div id="week-chart" class="line-chart line-chart--week"></div>
     </section>
     <section class="chart-panel">
-      <h2 id="month-chart-title">За месяц</h2>
+      <h2 id="month-chart-title">Р—Р° РјРµСЃСЏС†</h2>
       <div class="chart-scroll"><div id="month-chart" class="line-chart line-chart--month"></div></div>
     </section>
   </section>

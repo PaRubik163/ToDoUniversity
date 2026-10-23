@@ -86,6 +86,8 @@
   const subjectInput = document.getElementById("field-subject");
   const titleInput = document.getElementById("field-title");
   const deadlineInput = document.getElementById("field-deadline");
+  const taskReminderDaysInput = document.getElementById("task-reminder-days");
+  const taskReminderValueEl = document.getElementById("task-reminder-value");
 
   const settingsToggleEl = document.getElementById("settings-toggle");
   const settingsFormEl = document.getElementById("settings-form");
@@ -93,7 +95,6 @@
   const cancelSettingsEl = document.getElementById("cancel-settings");
   const reminderTimesEl = document.getElementById("reminder-times");
   const addReminderTimeEl = document.getElementById("add-reminder-time");
-  const reminderDayInputs = Array.from(document.querySelectorAll('input[name="reminder-day"]'));
   const themeButtons = Array.from(document.querySelectorAll(".theme-option"));
   const neonThemeStylesheet = document.getElementById("neon-theme-stylesheet");
   const languageButtons = Array.from(document.querySelectorAll(".language-option"));
@@ -156,6 +157,7 @@
     const nextHour = (parsed[0] + 1) % 24;
     addReminderTimeRow(String(nextHour).padStart(2, "0") + ":" + String(parsed[1]).padStart(2, "0"));
   });
+  taskReminderDaysInput.addEventListener("input", updateTaskReminderDisplay);
 
   addToggleEl.addEventListener("click", function () {
     const wasHidden = formEl.classList.contains("hidden");
@@ -179,8 +181,9 @@
       subject: subjectInput.value.trim(),
       title: titleInput.value.trim(),
       deadline: deadlineInput.value,
+      reminder_days: [Number(taskReminderDaysInput.value)],
     };
-    if (!payload.subject || !payload.title || !payload.deadline) {
+    if (!payload.subject || !payload.title || !payload.deadline || !payload.reminder_days.length) {
       showFormError(t("fillAll"));
       return;
     }
@@ -216,17 +219,17 @@
     event.preventDefault();
     hideSettingsError();
     const reminderTimes = Array.from(reminderTimesEl.querySelectorAll('input[type="time"]')).map(function (input) { return input.value; }).filter(Boolean);
-    const reminderDays = reminderDayInputs.filter(function (input) { return input.checked; }).map(function (input) { return Number(input.value); });
-    if (!reminderTimes.length || !reminderDays.length || new Set(reminderTimes).size !== reminderTimes.length) {
+    if (!reminderTimes.length || new Set(reminderTimes).size !== reminderTimes.length) {
       showSettingsError(t("timeRequired"));
       return;
     }
-    saveSettings(reminderTimes, reminderDays, language, designTheme);
+    saveSettings(reminderTimes, language, designTheme);
   });
 
   function openAddForm() {
     editingId = null;
     formEl.reset();
+    setTaskReminderDays(7);
     hideFormError();
     formTitleEl.textContent = t("newTask");
     formEl.querySelector('button[type="submit"]').textContent = t("save");
@@ -240,6 +243,7 @@
     subjectInput.value = item.subject;
     titleInput.value = item.title;
     deadlineInput.value = item.deadline;
+    setTaskReminderDays(item.reminder_days && item.reminder_days.length ? item.reminder_days[0] : 7);
     formTitleEl.textContent = t("editTask", { id: item.id });
     formEl.querySelector('button[type="submit"]').textContent = t("saveChanges");
     settingsFormEl.classList.add("hidden");
@@ -250,8 +254,23 @@
   function closeAddForm() {
     editingId = null;
     formEl.reset();
+    setTaskReminderDays(7);
     hideFormError();
     formEl.classList.add("hidden");
+  }
+
+  function setTaskReminderDays(days) {
+    taskReminderDaysInput.value = String(Math.min(20, Math.max(1, days)));
+    updateTaskReminderDisplay();
+  }
+
+  function updateTaskReminderDisplay() {
+    const days = Number(taskReminderDaysInput.value);
+    const unitKey = language === "en" ? "dayUnit" : days === 1 ? "dayUnitOne" : days >= 2 && days <= 4 ? "dayUnitFew" : "dayUnit";
+    taskReminderValueEl.textContent = days + " " + t(unitKey);
+    taskReminderValueEl.value = taskReminderValueEl.textContent;
+    taskReminderDaysInput.style.setProperty("--reminder-progress", ((days - 1) / 19 * 100) + "%");
+    formEl.dataset.reminderZone = days <= 5 ? "pink" : days <= 14 ? "orange" : "blue";
   }
 
   function openSettingsForm() {
@@ -264,7 +283,6 @@
     apiFetch("/api/settings")
       .then(function (settings) {
         renderReminderTimes((settings && settings.reminder_times) || ["09:00"]);
-        setReminderDays((settings && settings.reminder_days) || [7]);
         designTheme = (settings && settings.design_theme) || "classic";
         settingsOriginalTheme = designTheme;
         applyDesignTheme();
@@ -276,7 +294,6 @@
       })
       .catch(function () {
         renderReminderTimes(["09:00"]);
-        setReminderDays([7]);
         designTheme = "classic";
         settingsOriginalTheme = designTheme;
         applyDesignTheme();
@@ -284,10 +301,10 @@
       });
   }
 
-  function saveSettings(reminderTimes, reminderDays, selectedLanguage, selectedTheme) {
+  function saveSettings(reminderTimes, selectedLanguage, selectedTheme) {
     const submitButton = settingsFormEl.querySelector('button[type="submit"]');
     submitButton.disabled = true;
-    apiFetch("/api/settings", { method: "PUT", body: JSON.stringify({ reminder_times: reminderTimes, reminder_days: reminderDays, language: selectedLanguage, design_theme: selectedTheme }) })
+    apiFetch("/api/settings", { method: "PUT", body: JSON.stringify({ reminder_times: reminderTimes, language: selectedLanguage, design_theme: selectedTheme }) })
       .then(function () {
         haptic("notificationSuccess");
         settingsOriginalLanguage = selectedLanguage;
@@ -345,10 +362,6 @@
   function updateReminderTimeRemoveButtons() {
     const canRemove = reminderTimesEl.children.length > 1;
     reminderTimesEl.querySelectorAll(".remove-reminder-time").forEach(function (button) { button.disabled = !canRemove; });
-  }
-
-  function setReminderDays(days) {
-    reminderDayInputs.forEach(function (input) { input.checked = days.includes(Number(input.value)); });
   }
 
   function loadHomework() {
@@ -723,6 +736,7 @@
 
   function applyLanguage() {
     document.documentElement.lang = language;
+    updateTaskReminderDisplay();
     document.title = t("appTitle");
     document.querySelectorAll("[data-i18n]").forEach(function (element) {
       element.textContent = t(element.dataset.i18n);

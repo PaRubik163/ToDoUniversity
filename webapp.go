@@ -25,19 +25,21 @@ var miniAppFiles embed.FS
 
 // apiHomework is the JSON shape sent to the Mini App frontend.
 type apiHomework struct {
-	ID          int64  `json:"id"`
-	Subject     string `json:"subject"`
-	Title       string `json:"title"`
-	Deadline    string `json:"deadline"` // YYYY-MM-DD
-	DaysLeft    int    `json:"days_left"`
-	Completed   bool   `json:"completed"`
-	CompletedAt string `json:"completed_at,omitempty"`
+	ID           int64  `json:"id"`
+	Subject      string `json:"subject"`
+	Title        string `json:"title"`
+	Deadline     string `json:"deadline"` // YYYY-MM-DD
+	ReminderDays []int  `json:"reminder_days"`
+	DaysLeft     int    `json:"days_left"`
+	Completed    bool   `json:"completed"`
+	CompletedAt  string `json:"completed_at,omitempty"`
 }
 
 type createHomeworkRequest struct {
-	Subject  string `json:"subject"`
-	Title    string `json:"title"`
-	Deadline string `json:"deadline"` // YYYY-MM-DD, matches <input type="date">
+	Subject      string `json:"subject"`
+	Title        string `json:"title"`
+	Deadline     string `json:"deadline"` // YYYY-MM-DD, matches <input type="date">
+	ReminderDays []int  `json:"reminder_days"`
 }
 
 type telegramUser struct {
@@ -387,6 +389,10 @@ func (b *Bot) apiUpdateHomework(w http.ResponseWriter, r *http.Request, userID, 
 		http.Error(w, "subject, title and deadline are required", http.StatusBadRequest)
 		return
 	}
+	if len(req.ReminderDays) > 0 && !validReminderDays(req.ReminderDays) {
+		http.Error(w, "reminder_days must contain exactly one value from 1 to 20", http.StatusBadRequest)
+		return
+	}
 	deadline, err := time.ParseInLocation("2006-01-02", req.Deadline, b.config.TZ)
 	if err != nil {
 		http.Error(w, "deadline must be in YYYY-MM-DD format", http.StatusBadRequest)
@@ -394,8 +400,10 @@ func (b *Bot) apiUpdateHomework(w http.ResponseWriter, r *http.Request, userID, 
 	}
 
 	result, err := b.db.ExecContext(r.Context(),
-		`UPDATE homework SET subject = $1, title = $2, deadline = $3 WHERE id = $4 AND chat_id = $5`,
-		req.Subject, req.Title, deadline, id, userID,
+		`UPDATE homework SET subject = $1, title = $2, deadline = $3,
+			reminder_days = CASE WHEN $4::smallint[] IS NULL THEN reminder_days ELSE $4::smallint[] END
+			WHERE id = $5 AND chat_id = $6`,
+		req.Subject, req.Title, deadline, nullableIntArray(req.ReminderDays), id, userID,
 	)
 	if err != nil {
 		log.Printf("update homework: %v", err)
@@ -415,18 +423,18 @@ func (b *Bot) apiUpdateHomework(w http.ResponseWriter, r *http.Request, userID, 
 
 	now := time.Now().In(b.config.TZ)
 	writeJSON(w, apiHomework{
-		ID:       id,
-		Subject:  req.Subject,
-		Title:    req.Title,
-		Deadline: deadline.Format("2006-01-02"),
-		DaysLeft: calendarDays(now, deadline, b.config.TZ),
+		ID:           id,
+		Subject:      req.Subject,
+		Title:        req.Title,
+		Deadline:     deadline.Format("2006-01-02"),
+		ReminderDays: req.ReminderDays,
+		DaysLeft:     calendarDays(now, deadline, b.config.TZ),
 	})
 }
 
 // apiSettings is the JSON shape for the mini app's reminder-time setting.
 type apiSettings struct {
 	ReminderTimes []string `json:"reminder_times"` // HH:MM, 24h
-	ReminderDays  []int    `json:"reminder_days"`
 	Language      string   `json:"language"`
 	DesignTheme   string   `json:"design_theme"`
 }
@@ -444,29 +452,22 @@ func (b *Bot) handleSettings(w http.ResponseWriter, r *http.Request, userID int6
 
 func (b *Bot) apiGetSettings(w http.ResponseWriter, r *http.Request, userID int64) {
 	var timesJSON string
-	var daysJSON string
 	var language string
 	var theme string
 	err := b.db.QueryRowContext(r.Context(),
-		`SELECT array_to_json(reminder_times)::text, array_to_json(reminder_days)::text, language, design_theme FROM user_settings WHERE chat_id = $1`, userID,
-	).Scan(&timesJSON, &daysJSON, &language, &theme)
+		`SELECT array_to_json(reminder_times)::text, language, design_theme FROM user_settings WHERE chat_id = $1`, userID,
+	).Scan(&timesJSON, &language, &theme)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
 			log.Printf("get settings: %v", err)
 			http.Error(w, "database error", http.StatusInternalServerError)
 			return
 		}
-		timesJSON, daysJSON, language, theme = `["09:00:00"]`, `[7]`, "ru", "classic"
+		timesJSON, language, theme = `["09:00:00"]`, "ru", "classic"
 	}
 	var dbTimes []string
-	var days []int
 	if err := json.Unmarshal([]byte(timesJSON), &dbTimes); err != nil {
 		log.Printf("decode reminder times: %v", err)
-		http.Error(w, "database error", http.StatusInternalServerError)
-		return
-	}
-	if err := json.Unmarshal([]byte(daysJSON), &days); err != nil {
-		log.Printf("decode reminder days: %v", err)
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
@@ -482,7 +483,7 @@ func (b *Bot) apiGetSettings(w http.ResponseWriter, r *http.Request, userID int6
 		}
 		dbTimes[i] = parsed.Format("15:04")
 	}
-	writeJSON(w, apiSettings{ReminderTimes: dbTimes, ReminderDays: days, Language: language, DesignTheme: theme})
+	writeJSON(w, apiSettings{ReminderTimes: dbTimes, Language: language, DesignTheme: theme})
 }
 
 func (b *Bot) apiPutSettings(w http.ResponseWriter, r *http.Request, userID int64) {
@@ -510,24 +511,6 @@ func (b *Bot) apiPutSettings(w http.ResponseWriter, r *http.Request, userID int6
 		}
 		seenTimes[value] = true
 		times = append(times, value)
-	}
-	if len(req.ReminderDays) == 0 || len(req.ReminderDays) > 4 {
-		http.Error(w, "choose at least one reminder interval", http.StatusBadRequest)
-		return
-	}
-	days := make([]string, 0, len(req.ReminderDays))
-	seenDays := make(map[int]bool, len(req.ReminderDays))
-	for _, value := range req.ReminderDays {
-		if value != 14 && value != 7 && value != 3 && value != 1 {
-			http.Error(w, "reminder_days may contain only 14, 7, 3, and 1", http.StatusBadRequest)
-			return
-		}
-		if seenDays[value] {
-			http.Error(w, "reminder days must be unique", http.StatusBadRequest)
-			return
-		}
-		seenDays[value] = true
-		days = append(days, strconv.Itoa(value))
 	}
 	req.Language = strings.TrimSpace(req.Language)
 	if req.Language != "" && req.Language != "ru" && req.Language != "en" {
@@ -560,19 +543,19 @@ func (b *Bot) apiPutSettings(w http.ResponseWriter, r *http.Request, userID int6
 		}
 	}
 	_, err := b.db.ExecContext(r.Context(), `
-		INSERT INTO user_settings (chat_id, reminder_hour, reminder_minute, reminder_times, reminder_days, language, design_theme, updated_at)
-		VALUES ($1, $2, $3, string_to_array($4, ',')::time[], string_to_array($5, ',')::smallint[], $6, $7, now())
+		INSERT INTO user_settings (chat_id, reminder_hour, reminder_minute, reminder_times, language, design_theme, updated_at)
+		VALUES ($1, $2, $3, string_to_array($4, ',')::time[], $5, $6, now())
 		ON CONFLICT (chat_id) DO UPDATE SET
 			reminder_hour = $2, reminder_minute = $3,
-			reminder_times = string_to_array($4, ',')::time[], reminder_days = string_to_array($5, ',')::smallint[],
-			language = $6, design_theme = $7, updated_at = now()`,
-		userID, mustParseClock(times[0]), mustParseClockMinute(times[0]), strings.Join(times, ","), strings.Join(days, ","), language, theme)
+			reminder_times = string_to_array($4, ',')::time[],
+			language = $5, design_theme = $6, updated_at = now()`,
+		userID, mustParseClock(times[0]), mustParseClockMinute(times[0]), strings.Join(times, ","), language, theme)
 	if err != nil {
 		log.Printf("put settings: %v", err)
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, apiSettings{ReminderTimes: times, ReminderDays: req.ReminderDays, Language: language, DesignTheme: theme})
+	writeJSON(w, apiSettings{ReminderTimes: times, Language: language, DesignTheme: theme})
 }
 
 func mustParseClock(value string) int {
@@ -587,7 +570,7 @@ func mustParseClockMinute(value string) int {
 
 func (b *Bot) apiListHomework(w http.ResponseWriter, r *http.Request, userID int64) {
 	rows, err := b.db.QueryContext(r.Context(), `
-		SELECT h.id, h.subject, h.title, h.deadline,
+		SELECT h.id, h.subject, h.title, h.deadline, COALESCE(array_to_json(h.reminder_days)::text, '[]'),
 			COALESCE(s.is_completed, FALSE), s.completed_at
 		FROM homework h
 		LEFT JOIN homework_status s ON s.homework_id = h.id
@@ -606,8 +589,14 @@ func (b *Bot) apiListHomework(w http.ResponseWriter, r *http.Request, userID int
 		var item homework
 		var completed bool
 		var completedAt sql.NullTime
-		if err := rows.Scan(&item.ID, &item.Subject, &item.Title, &item.Deadline, &completed, &completedAt); err != nil {
+		var reminderDaysJSON string
+		if err := rows.Scan(&item.ID, &item.Subject, &item.Title, &item.Deadline, &reminderDaysJSON, &completed, &completedAt); err != nil {
 			log.Printf("scan homework: %v", err)
+			http.Error(w, "database error", http.StatusInternalServerError)
+			return
+		}
+		if err := json.Unmarshal([]byte(reminderDaysJSON), &item.ReminderDays); err != nil {
+			log.Printf("decode homework reminder days: %v", err)
 			http.Error(w, "database error", http.StatusInternalServerError)
 			return
 		}
@@ -645,6 +634,10 @@ func (b *Bot) apiCreateHomework(w http.ResponseWriter, r *http.Request, userID i
 		http.Error(w, "subject, title and deadline are required", http.StatusBadRequest)
 		return
 	}
+	if len(req.ReminderDays) > 0 && !validReminderDays(req.ReminderDays) {
+		http.Error(w, "reminder_days must contain exactly one value from 1 to 20", http.StatusBadRequest)
+		return
+	}
 	deadline, err := time.ParseInLocation("2006-01-02", req.Deadline, b.config.TZ)
 	if err != nil {
 		http.Error(w, "deadline must be in YYYY-MM-DD format", http.StatusBadRequest)
@@ -654,14 +647,14 @@ func (b *Bot) apiCreateHomework(w http.ResponseWriter, r *http.Request, userID i
 	var id int64
 	err = b.db.QueryRowContext(r.Context(),
 		`WITH new_homework AS (
-			INSERT INTO homework (chat_id, subject, title, deadline)
-			VALUES ($1, $2, $3, $4)
+			INSERT INTO homework (chat_id, subject, title, deadline, reminder_days)
+			VALUES ($1, $2, $3, $4, $5::smallint[])
 			RETURNING id
 		)
 		INSERT INTO homework_status (homework_id, is_completed)
 		SELECT id, FALSE FROM new_homework
 		RETURNING homework_id`,
-		userID, req.Subject, req.Title, deadline,
+		userID, req.Subject, req.Title, deadline, nullableIntArray(req.ReminderDays),
 	).Scan(&id)
 	if err != nil {
 		log.Printf("create homework: %v", err)
@@ -671,12 +664,31 @@ func (b *Bot) apiCreateHomework(w http.ResponseWriter, r *http.Request, userID i
 
 	now := time.Now().In(b.config.TZ)
 	writeJSON(w, apiHomework{
-		ID:       id,
-		Subject:  req.Subject,
-		Title:    req.Title,
-		Deadline: deadline.Format("2006-01-02"),
-		DaysLeft: calendarDays(now, deadline, b.config.TZ),
+		ID:           id,
+		Subject:      req.Subject,
+		Title:        req.Title,
+		Deadline:     deadline.Format("2006-01-02"),
+		ReminderDays: req.ReminderDays,
+		DaysLeft:     calendarDays(now, deadline, b.config.TZ),
 	})
+}
+
+func validReminderDays(days []int) bool {
+	if len(days) != 1 {
+		return false
+	}
+	return days[0] >= 1 && days[0] <= 20
+}
+
+func nullableIntArray(days []int) interface{} {
+	if len(days) == 0 {
+		return nil
+	}
+	values := make([]string, len(days))
+	for i, day := range days {
+		values[i] = strconv.Itoa(day)
+	}
+	return "{" + strings.Join(values, ",") + "}"
 }
 
 func writeJSON(w http.ResponseWriter, v interface{}) {

@@ -421,4 +421,10 @@ body[data-theme="neon"] .line-chart--month .chart-line { stroke: var(--cyan); }
 body[data-theme="neon"] .line-chart--month .chart-point { fill: var(--cyan); }
 body[data-theme="neon"] .language-option.active,
 body[data-theme="neon"] .theme-option.active { border-color: var(--cyan); background: rgba(46, 248, 255, .12); color: var(--cyan); }
-body[data-theme="neon"] .reminder-day-option { border-color: rgba(46, 248, 255, .35); background: rgba(4, 6, 16, .65); }
+body[data-theme="neon"] .add-form input[type="range"] { --reminder-color: var(--cyan); }
+body[data-theme="neon"] .add-form[data-reminder-zone="pink"] input[type="range"] { --reminder-color: var(--magenta); }
+body[data-theme="neon"] .add-form[data-reminder-zone="orange"] input[type="range"] { --reminder-color: #ff9b42; }
+body[data-theme="neon"] .add-form[data-reminder-zone="blue"] input[type="range"] { --reminder-color: var(--cyan); }
+body[data-theme="neon"] .add-form[data-reminder-zone="pink"] .task-reminder-control output { color: var(--magenta); }
+body[data-theme="neon"] .add-form[data-reminder-zone="orange"] .task-reminder-control output { color: #ff9b42; }
+body[data-theme="neon"] .add-form[data-reminder-zone="blue"] .task-reminder-control output { color: var(--cyan); }

@@ -169,6 +169,29 @@ body {
 .button.secondary:hover { border-color: var(--muted); color: var(--ink); }
 
 .reminder-setting { min-width: 0; margin: 0; padding: 0; border: 0; }
+.task-reminder-setting { margin-top: 2px; }
+.task-reminder-control { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; }
+.add-form input[type="range"] {
+  --reminder-progress: 31.6%;
+  --reminder-color: #263a2d;
+  width: 100%;
+  min-height: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+.add-form input[type="range"]::-webkit-slider-runnable-track { height: 6px; border-radius: 999px; background: linear-gradient(to right, var(--reminder-color) 0 var(--reminder-progress), var(--line) var(--reminder-progress) 100%); }
+.add-form input[type="range"]::-moz-range-track { height: 6px; border-radius: 999px; background: var(--line); }
+.add-form input[type="range"]::-moz-range-progress { height: 6px; border-radius: 999px; background: var(--reminder-color); }
+.add-form input[type="range"]::-webkit-slider-thumb { width: 20px; height: 20px; margin-top: -7px; border: 2px solid var(--surface); border-radius: 50%; background: var(--reminder-color); box-shadow: 0 0 0 1px var(--reminder-color); appearance: none; -webkit-appearance: none; }
+.add-form input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border: 2px solid var(--surface); border-radius: 50%; background: var(--reminder-color); box-shadow: 0 0 0 1px var(--reminder-color); }
+.add-form input[type="range"]:focus-visible { outline: 2px solid var(--reminder-color); outline-offset: 4px; box-shadow: none; }
+.task-reminder-control output { min-width: 58px; color: var(--olive); font-size: 14px; font-weight: 800; text-align: right; white-space: nowrap; }
 .reminder-setting legend { margin-bottom: 8px; color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .045em; text-transform: uppercase; }
 .reminder-day-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
 .add-form .reminder-day-option {
