@@ -49,6 +49,9 @@ type Message struct {
 	Chat      struct {
 		ID int64 `json:"id"`
 	} `json:"chat"`
+	From struct {
+		LanguageCode string `json:"language_code"`
+	} `json:"from"`
 	Text string `json:"text"`
 }
 
@@ -238,9 +241,20 @@ func (b *Bot) getUpdates(ctx context.Context, offset int64) ([]Update, error) {
 func (b *Bot) handleMessage(ctx context.Context, msg *Message) error {
 	text := strings.TrimSpace(msg.Text)
 	switch {
-	case text == "/start" || text == "/help":
+	case text == "/start":
+		welcome, button := startCopy(msg.From.LanguageCode)
 		if b.config.MiniAppURL != "" {
-			err := b.sendWebAppButton(ctx, msg.Chat.ID, helpText, "📋 Открыть список заданий", b.config.MiniAppURL)
+			if err := b.sendWebAppButton(ctx, msg.Chat.ID, welcome, button, b.config.MiniAppURL); err == nil {
+				return nil
+			} else {
+				log.Printf("send web app button: %v", err)
+			}
+		}
+		return b.sendMessage(ctx, msg.Chat.ID, welcome)
+	case text == "/help":
+		if b.config.MiniAppURL != "" {
+			_, button := startCopy(msg.From.LanguageCode)
+			err := b.sendWebAppButton(ctx, msg.Chat.ID, helpText, button, b.config.MiniAppURL)
 			if err == nil {
 				return nil
 			}
@@ -276,6 +290,29 @@ func (b *Bot) handleMessage(ctx context.Context, msg *Message) error {
 		return b.sendMessage(ctx, msg.Chat.ID, fmt.Sprintf("Записала задание №%d. Напомню за 7 дней до дедлайна и далее каждый день.", id))
 	default:
 		return b.sendMessage(ctx, msg.Chat.ID, "Я понимаю добавление задания, /list, /edit, /delete и /remindtime.\n\n"+formatExample)
+	}
+}
+
+// startCopy uses Telegram's language_code from the /start update. initData is
+// only available after the user has opened the Mini App.
+func startCopy(languageCode string) (message, button string) {
+	language := strings.ToLower(strings.TrimSpace(languageCode))
+	if i := strings.IndexAny(language, "-_"); i >= 0 {
+		language = language[:i]
+	}
+	switch language {
+	case "en":
+		return "Add a task, choose when you’d like to be reminded, and the bot will help you stay on top of it. Tap the button below to get started.", "Open app"
+	case "zh":
+		return "添加任务并选择提醒时间，机器人会帮你及时记住每件事。点击下方按钮开始使用。", "打开应用"
+	case "es":
+		return "Añade una tarea y elige cuándo quieres recibir un recordatorio. El bot te ayudará a tenerlo todo bajo control. Pulsa el botón para empezar.", "Abrir la app"
+	case "ar":
+		return "أضف مهمة واختر موعد التذكير، وسيساعدك البوت على متابعة كل ما عليك إنجازه. اضغط الزر أدناه للبدء.", "فتح التطبيق"
+	case "hy":
+		return "Ավելացրեք առաջադրանք և ընտրեք հիշեցման ժամը․ բոտը կօգնի ձեզ ամեն ինչ ժամանակին հիշել։ Սկսելու համար սեղմեք ներքևի կոճակը։", "Բացել հավելվածը"
+	default:
+		return "Добавьте задачу и выберите время напоминания — бот поможет ничего не забыть. Чтобы начать, нажмите кнопку ниже.", "Открыть приложение"
 	}
 }
 
