@@ -136,6 +136,7 @@
   const statUncompletedEl = document.getElementById("stat-uncompleted");
   const statOverdueEl = document.getElementById("stat-overdue");
   const monthPickerEl = document.getElementById("month-picker");
+  const monthPickerLabelEl = document.getElementById("month-picker-label");
   const monthPrevEl = document.getElementById("month-prev");
   const monthNextEl = document.getElementById("month-next");
   const monthChartTitleEl = document.getElementById("month-chart-title");
@@ -196,6 +197,7 @@
   monthPickerEl.addEventListener("change", function () {
     if (!monthPickerEl.value) return;
     selectedMonth = monthPickerEl.value;
+    updateMonthPickerLabel();
     loadAnalytics();
   });
   monthPrevEl.addEventListener("click", function () { shiftSelectedMonth(-1); });
@@ -546,6 +548,7 @@
     weekRangeEl.textContent = t("weekRange", { from: formatDate(data.week_start), to: formatDate(data.week_end) });
     selectedMonth = data.month;
     monthPickerEl.value = data.month;
+    updateMonthPickerLabel();
     monthPickerEl.max = data.current_month;
     monthNextEl.disabled = data.month >= data.current_month;
     monthChartTitleEl.textContent = t("monthGraphTitle", { month: formatMonth(data.month) });
@@ -570,7 +573,12 @@
     const date = new Date(Number(parts[0]), Number(parts[1]) - 1 + amount, 1);
     selectedMonth = date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0");
     monthPickerEl.value = selectedMonth;
+    updateMonthPickerLabel();
     loadAnalytics();
+  }
+
+  function updateMonthPickerLabel() {
+    if (selectedMonth) monthPickerLabelEl.textContent = formatMonth(selectedMonth);
   }
 
   function formatMonth(month) {
@@ -816,6 +824,7 @@
       element.setAttribute("placeholder", t(element.dataset.i18nPlaceholder));
     });
     languageSelectEl.value = language;
+    updateMonthPickerLabel();
     document.querySelectorAll(".remove-reminder-time").forEach(function (button) {
       button.textContent = t("removeReminderTime");
       button.setAttribute("aria-label", t("removeReminderTime"));

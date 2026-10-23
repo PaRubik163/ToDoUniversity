@@ -96,7 +96,11 @@
   <section id="analytics" class="analytics hidden" aria-label="Аналитика" data-i18n-aria="analytics">
     <div class="month-filter">
       <button id="month-prev" class="month-arrow" type="button" aria-label="Предыдущий месяц" data-i18n-aria="previousMonth">&#8249;</button>
-      <label><span class="visually-hidden" data-i18n="analyticsMonth">Месяц аналитики</span><input id="month-picker" type="month"></label>
+      <label class="month-picker-control">
+        <span class="visually-hidden" data-i18n="analyticsMonth">Месяц аналитики</span>
+        <span id="month-picker-label" class="month-picker-label" aria-hidden="true">Октябрь 2026</span>
+        <input id="month-picker" type="month" aria-label="Месяц аналитики" data-i18n-aria="analyticsMonth">
+      </label>
       <button id="month-next" class="month-arrow" type="button" aria-label="Следующий месяц" data-i18n-aria="nextMonth">&#8250;</button>
     </div>
     <p id="week-range" class="week-range"></p>
