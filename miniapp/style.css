@@ -140,6 +140,39 @@ body {
 }
 .add-form select:focus-visible { outline: none; border-color: var(--olive); box-shadow: 0 0 0 3px rgba(89, 100, 75, .14); }
 
+.date-picker-control {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--surface-raised);
+  color: var(--ink);
+  font: 500 15px "Manrope", sans-serif;
+  text-transform: none;
+}
+.date-picker-display { color: var(--muted); }
+.date-picker-icon { color: var(--muted); font-size: 18px; line-height: 1; }
+.date-picker-control input#field-deadline {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.date-picker-control input#field-deadline:focus-visible { outline: none; border: 0; box-shadow: none; }
+.date-picker-control:focus-within { outline: 2px solid var(--olive); outline-offset: 2px; }
+
 .add-form input::placeholder { color: #aaa69a; font-weight: 400; }
 .add-form input:focus, .button:focus-visible, .icon-button:focus-visible,
 .icon-action:focus-visible, .language-option:focus-visible, .theme-option:focus-visible {

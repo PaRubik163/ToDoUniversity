@@ -381,6 +381,13 @@ body[data-theme="neon"] .month-filter input {
   font-family: "Rajdhani", sans-serif;
 }
 
+body[data-theme="neon"] .date-picker-control {
+  border-color: var(--line);
+  background: var(--panel-2);
+  color: var(--text);
+  font-family: "Rajdhani", sans-serif;
+}
+
 body[data-theme="neon"] .month-picker-control {
   border-color: var(--line);
   background: var(--panel);

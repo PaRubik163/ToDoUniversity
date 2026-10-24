@@ -68,7 +68,11 @@
     </label>
     <label>
       <span data-i18n="deadline">Дедлайн</span>
-      <input id="field-deadline" type="date" required>
+      <span class="date-picker-control">
+        <span id="deadline-display" class="date-picker-display">ДД.ММ.ГГГГ</span>
+        <span class="date-picker-icon" aria-hidden="true">▦</span>
+        <input id="field-deadline" type="date" aria-label="Дедлайн" data-i18n-aria="deadline" required>
+      </span>
     </label>
     <fieldset class="reminder-setting task-reminder-setting">
       <legend data-i18n="reminderDaysLabel">Напомнить за</legend>

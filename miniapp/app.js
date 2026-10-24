@@ -151,6 +151,7 @@
   const subjectInput = document.getElementById("field-subject");
   const titleInput = document.getElementById("field-title");
   const deadlineInput = document.getElementById("field-deadline");
+  const deadlineDisplayEl = document.getElementById("deadline-display");
   const taskReminderDaysInput = document.getElementById("task-reminder-days");
   const taskReminderValueEl = document.getElementById("task-reminder-value");
 
@@ -222,6 +223,7 @@
     addReminderTimeRow(String(nextHour).padStart(2, "0") + ":" + String(parsed[1]).padStart(2, "0"));
   });
   taskReminderDaysInput.addEventListener("input", updateTaskReminderDisplay);
+  deadlineInput.addEventListener("change", updateDeadlineDisplay);
 
   addToggleEl.addEventListener("click", function () {
     const wasHidden = formEl.classList.contains("hidden");
@@ -293,6 +295,7 @@
   function openAddForm() {
     editingId = null;
     formEl.reset();
+    updateDeadlineDisplay();
     setTaskReminderDays(7);
     hideFormError();
     formTitleEl.textContent = t("newTask");
@@ -307,6 +310,7 @@
     subjectInput.value = item.subject;
     titleInput.value = item.title;
     deadlineInput.value = item.deadline;
+    updateDeadlineDisplay();
     setTaskReminderDays(item.reminder_days && item.reminder_days.length ? item.reminder_days[0] : 7);
     formTitleEl.textContent = t("editTask", { id: item.id });
     formEl.querySelector('button[type="submit"]').textContent = t("saveChanges");
@@ -318,6 +322,7 @@
   function closeAddForm() {
     editingId = null;
     formEl.reset();
+    updateDeadlineDisplay();
     setTaskReminderDays(7);
     hideFormError();
     formEl.classList.add("hidden");
@@ -326,6 +331,14 @@
   function setTaskReminderDays(days) {
     taskReminderDaysInput.value = String(Math.min(20, Math.max(1, days)));
     updateTaskReminderDisplay();
+  }
+
+  function updateDeadlineDisplay() {
+    const placeholders = {
+      ru: "ДД.ММ.ГГГГ", en: "MM/DD/YYYY", zh: "YYYY/MM/DD", es: "DD/MM/AAAA",
+      ar: "\u064a\u0648\u0645/\u0634\u0647\u0631/\u0633\u0646\u0629", hy: "\u0555\u0555.\u0531\u0531.\u054f\u054f\u054f\u054f"
+    };
+    deadlineDisplayEl.textContent = deadlineInput.value ? formatDate(deadlineInput.value) : placeholders[language] || placeholders.ru;
   }
 
   function updateTaskReminderDisplay() {
@@ -755,9 +768,8 @@
 
   function formatDate(dateStr) {
     const parts = dateStr.split("-");
-    return language === "en"
-      ? parts[1] + "/" + parts[2] + "/" + parts[0]
-      : parts[2] + "." + parts[1] + "." + parts[0];
+    const date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    return date.toLocaleDateString(languageLocale(), { year: "numeric", month: "2-digit", day: "2-digit" });
   }
 
   function deadlineClass(daysLeft) {
@@ -824,6 +836,7 @@
     // of inheriting the document language in some browsers.
     deadlineInput.lang = locale;
     monthPickerEl.lang = locale;
+    updateDeadlineDisplay();
     updateTaskReminderDisplay();
     document.title = t("appTitle");
     document.querySelectorAll("[data-i18n]").forEach(function (element) {
