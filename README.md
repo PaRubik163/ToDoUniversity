@@ -1,5 +1,5 @@
 # Мини-апп для бота с заданиями
-
+Телеграмм Бот @only_low_code_solutions_bot
 ## Что изменилось
 - `webapp.go` — новый файл: HTTP-сервер, отдаёт мини-апп (`miniapp/*`) и JSON API
   (`GET/POST /api/homework`, `DELETE /api/homework/{id}`), проверяет подпись
