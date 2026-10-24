@@ -817,8 +817,13 @@
   }
 
   function applyLanguage() {
-    document.documentElement.lang = language === "zh" ? "zh-CN" : language === "ar" ? "ar" : language === "hy" ? "hy-AM" : language;
+    const locale = languageLocale();
+    document.documentElement.lang = locale;
     document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
+    // Native date/month controls can use the control's own language instead
+    // of inheriting the document language in some browsers.
+    deadlineInput.lang = locale;
+    monthPickerEl.lang = locale;
     updateTaskReminderDisplay();
     document.title = t("appTitle");
     document.querySelectorAll("[data-i18n]").forEach(function (element) {

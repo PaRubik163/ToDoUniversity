@@ -18,29 +18,14 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"homework-reminder-bot/internal/handler"
+	"homework-reminder-bot/internal/repository/postgres"
+	"homework-reminder-bot/internal/service"
 )
 
 //go:embed miniapp/*
 var miniAppFiles embed.FS
-
-// apiHomework is the JSON shape sent to the Mini App frontend.
-type apiHomework struct {
-	ID           int64  `json:"id"`
-	Subject      string `json:"subject"`
-	Title        string `json:"title"`
-	Deadline     string `json:"deadline"` // YYYY-MM-DD
-	ReminderDays []int  `json:"reminder_days"`
-	DaysLeft     int    `json:"days_left"`
-	Completed    bool   `json:"completed"`
-	CompletedAt  string `json:"completed_at,omitempty"`
-}
-
-type createHomeworkRequest struct {
-	Subject      string `json:"subject"`
-	Title        string `json:"title"`
-	Deadline     string `json:"deadline"` // YYYY-MM-DD, matches <input type="date">
-	ReminderDays []int  `json:"reminder_days"`
-}
 
 type telegramUser struct {
 	ID           int64  `json:"id"`
@@ -57,10 +42,14 @@ func (b *Bot) startWebServer(ctx context.Context, addr string) error {
 
 	mux := http.NewServeMux()
 	mux.Handle("/", http.FileServer(http.FS(sub)))
-	mux.HandleFunc("/api/homework", b.withAuth(b.handleHomeworkCollection))
-	mux.HandleFunc("/api/homework/", b.withAuth(b.handleHomeworkItem))
-	mux.HandleFunc("/api/settings", b.withAuth(b.handleSettings))
-	mux.HandleFunc("/api/analytics", b.withAuth(b.handleAnalytics))
+	userService := service.NewUserService(postgres.NewUserRepository(b.db))
+	homeworkRepository := postgres.NewHomeworkRepository(b.db)
+	homeworkService := service.NewHomeworkService(homeworkRepository, b.config.Timezone)
+	homeworkHandler := handler.NewHomeworkHandler(homeworkService, b.config.Timezone)
+	mux.HandleFunc("/api/homework", b.withAuth(homeworkHandler.Collection, userService))
+	mux.HandleFunc("/api/homework/", b.withAuth(homeworkHandler.Item, userService))
+	mux.HandleFunc("/api/settings", b.withAuth(b.handleSettings, userService))
+	mux.HandleFunc("/api/analytics", b.withAuth(b.handleAnalytics, userService))
 
 	server := &http.Server{
 		Addr:              addr,
@@ -92,16 +81,21 @@ func logRequests(next http.Handler) http.Handler {
 // X-Telegram-Init-Data header and passes the authenticated Telegram user id
 // through to the wrapped handler. The user id doubles as the chat_id used
 // everywhere else in this app, since the bot only ever talks to users 1:1.
-func (b *Bot) withAuth(next func(w http.ResponseWriter, r *http.Request, userID int64)) http.HandlerFunc {
+func (b *Bot) withAuth(next func(w http.ResponseWriter, r *http.Request, userID int64), users *service.UserService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		initData := r.Header.Get("X-Telegram-Init-Data")
 		if initData == "" {
 			http.Error(w, "missing init data", http.StatusUnauthorized)
 			return
 		}
-		userID, err := validateInitData(initData, b.config.Token)
+		userID, err := validateInitData(initData, b.config.TelegramBotToken)
 		if err != nil {
 			http.Error(w, "invalid init data: "+err.Error(), http.StatusUnauthorized)
+			return
+		}
+		if err := users.EnsureExists(r.Context(), userID, telegramLanguageFromInitData(initData)); err != nil {
+			log.Printf("ensure mini app user %d: %v", userID, err)
+			http.Error(w, "could not initialize user", http.StatusInternalServerError)
 			return
 		}
 		next(w, r, userID)
@@ -169,81 +163,6 @@ func validateInitData(initData, botToken string) (int64, error) {
 	return user.ID, nil
 }
 
-func (b *Bot) handleHomeworkCollection(w http.ResponseWriter, r *http.Request, userID int64) {
-	switch r.Method {
-	case http.MethodGet:
-		b.apiListHomework(w, r, userID)
-	case http.MethodPost:
-		b.apiCreateHomework(w, r, userID)
-	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-	}
-}
-
-func (b *Bot) handleHomeworkItem(w http.ResponseWriter, r *http.Request, userID int64) {
-	idStr := strings.TrimPrefix(r.URL.Path, "/api/homework/")
-	if strings.HasSuffix(idStr, "/status") {
-		idStr = strings.TrimSuffix(idStr, "/status")
-		id, err := strconv.ParseInt(idStr, 10, 64)
-		if err != nil || id < 1 {
-			http.Error(w, "invalid id", http.StatusBadRequest)
-			return
-		}
-		if r.Method != http.MethodPut {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		b.apiSetHomeworkStatus(w, r, userID, id)
-		return
-	}
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil || id < 1 {
-		http.Error(w, "invalid id", http.StatusBadRequest)
-		return
-	}
-	switch r.Method {
-	case http.MethodPut:
-		b.apiUpdateHomework(w, r, userID, id)
-	case http.MethodDelete:
-		b.apiDeleteHomework(w, r, userID, id)
-	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-	}
-}
-
-func (b *Bot) apiSetHomeworkStatus(w http.ResponseWriter, r *http.Request, userID, id int64) {
-	var req struct {
-		Completed bool `json:"completed"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
-		return
-	}
-	result, err := b.db.ExecContext(r.Context(), `
-		INSERT INTO homework_status (homework_id, is_completed, completed_at)
-		SELECT id, $1, CASE WHEN $1 THEN now() ELSE NULL END
-		FROM homework WHERE id = $2 AND chat_id = $3
-		ON CONFLICT (homework_id) DO UPDATE SET
-			is_completed = EXCLUDED.is_completed,
-			completed_at = EXCLUDED.completed_at`, req.Completed, id, userID)
-	if err != nil {
-		log.Printf("set homework status: %v", err)
-		http.Error(w, "database error", http.StatusInternalServerError)
-		return
-	}
-	count, err := result.RowsAffected()
-	if err != nil {
-		log.Printf("set homework status rows affected: %v", err)
-		http.Error(w, "database error", http.StatusInternalServerError)
-		return
-	}
-	if count == 0 {
-		http.Error(w, "not found", http.StatusNotFound)
-		return
-	}
-	writeJSON(w, map[string]bool{"completed": req.Completed})
-}
-
 type apiAnalytics struct {
 	CompletedThisWeek  int                  `json:"completed_this_week"`
 	CompletedThisMonth int                  `json:"completed_this_month"`
@@ -267,22 +186,22 @@ func (b *Bot) handleAnalytics(w http.ResponseWriter, r *http.Request, userID int
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	now := time.Now().In(b.config.TZ)
-	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, b.config.TZ)
+	now := time.Now().In(b.config.Timezone)
+	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, b.config.Timezone)
 	monthParam := strings.TrimSpace(r.URL.Query().Get("month"))
 	if monthParam != "" {
-		parsedMonth, err := time.ParseInLocation("2006-01", monthParam, b.config.TZ)
+		parsedMonth, err := time.ParseInLocation("2006-01", monthParam, b.config.Timezone)
 		if err != nil || parsedMonth.Format("2006-01") != monthParam {
 			http.Error(w, "month must be in YYYY-MM format", http.StatusBadRequest)
 			return
 		}
-		monthStart = time.Date(parsedMonth.Year(), parsedMonth.Month(), 1, 0, 0, 0, 0, b.config.TZ)
+		monthStart = time.Date(parsedMonth.Year(), parsedMonth.Month(), 1, 0, 0, 0, 0, b.config.Timezone)
 	}
 	monthEnd := monthStart.AddDate(0, 1, 0)
 	daysSinceMonday := (int(now.Weekday()) + 6) % 7
-	weekStart := time.Date(now.Year(), now.Month(), now.Day()-daysSinceMonday, 0, 0, 0, 0, b.config.TZ)
+	weekStart := time.Date(now.Year(), now.Month(), now.Day()-daysSinceMonday, 0, 0, 0, 0, b.config.Timezone)
 	weekEnd := weekStart.AddDate(0, 0, 7)
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, b.config.TZ)
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, b.config.Timezone)
 	var result apiAnalytics
 	result.WeekStart = weekStart.Format("2006-01-02")
 	result.WeekEnd = weekEnd.AddDate(0, 0, -1).Format("2006-01-02")
@@ -338,7 +257,7 @@ func (b *Bot) completionCounts(ctx context.Context, userID int64, from, to time.
 		JOIN homework h ON h.id = s.homework_id
 		WHERE h.chat_id = $1 AND s.is_completed = TRUE
 		  AND s.completed_at >= $2 AND s.completed_at < $3
-		GROUP BY 1`, userID, from, to, b.config.TZ.String())
+		GROUP BY 1`, userID, from, to, b.config.Timezone.String())
 	if err != nil {
 		return nil, err
 	}
@@ -356,81 +275,6 @@ func (b *Bot) completionCounts(ctx context.Context, userID int64, from, to time.
 		return nil, err
 	}
 	return counts, nil
-}
-
-func (b *Bot) apiDeleteHomework(w http.ResponseWriter, r *http.Request, userID, id int64) {
-	result, err := b.db.ExecContext(r.Context(), "DELETE FROM homework WHERE id = $1 AND chat_id = $2", id, userID)
-	if err != nil {
-		log.Printf("delete homework: %v", err)
-		http.Error(w, "database error", http.StatusInternalServerError)
-		return
-	}
-	count, err := result.RowsAffected()
-	if err != nil {
-		log.Printf("delete homework rows affected: %v", err)
-		http.Error(w, "database error", http.StatusInternalServerError)
-		return
-	}
-	if count == 0 {
-		http.Error(w, "not found", http.StatusNotFound)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
-}
-
-func (b *Bot) apiUpdateHomework(w http.ResponseWriter, r *http.Request, userID, id int64) {
-	var req createHomeworkRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
-		return
-	}
-	req.Subject = strings.TrimSpace(req.Subject)
-	req.Title = strings.TrimSpace(req.Title)
-	if req.Subject == "" || req.Title == "" || req.Deadline == "" {
-		http.Error(w, "subject, title and deadline are required", http.StatusBadRequest)
-		return
-	}
-	if len(req.ReminderDays) > 0 && !validReminderDays(req.ReminderDays) {
-		http.Error(w, "reminder_days must contain exactly one value from 1 to 20", http.StatusBadRequest)
-		return
-	}
-	deadline, err := time.ParseInLocation("2006-01-02", req.Deadline, b.config.TZ)
-	if err != nil {
-		http.Error(w, "deadline must be in YYYY-MM-DD format", http.StatusBadRequest)
-		return
-	}
-
-	result, err := b.db.ExecContext(r.Context(),
-		`UPDATE homework SET subject = $1, title = $2, deadline = $3,
-			reminder_days = CASE WHEN $4::smallint[] IS NULL THEN reminder_days ELSE $4::smallint[] END
-			WHERE id = $5 AND chat_id = $6`,
-		req.Subject, req.Title, deadline, nullableIntArray(req.ReminderDays), id, userID,
-	)
-	if err != nil {
-		log.Printf("update homework: %v", err)
-		http.Error(w, "database error", http.StatusInternalServerError)
-		return
-	}
-	count, err := result.RowsAffected()
-	if err != nil {
-		log.Printf("update homework rows affected: %v", err)
-		http.Error(w, "database error", http.StatusInternalServerError)
-		return
-	}
-	if count == 0 {
-		http.Error(w, "not found", http.StatusNotFound)
-		return
-	}
-
-	now := time.Now().In(b.config.TZ)
-	writeJSON(w, apiHomework{
-		ID:           id,
-		Subject:      req.Subject,
-		Title:        req.Title,
-		Deadline:     deadline.Format("2006-01-02"),
-		ReminderDays: req.ReminderDays,
-		DaysLeft:     calendarDays(now, deadline, b.config.TZ),
-	})
 }
 
 // apiSettings is the JSON shape for the mini app's reminder-time setting.
@@ -599,129 +443,6 @@ func mustParseClockMinute(value string) int {
 	return parsed.Minute()
 }
 
-func (b *Bot) apiListHomework(w http.ResponseWriter, r *http.Request, userID int64) {
-	rows, err := b.db.QueryContext(r.Context(), `
-		SELECT h.id, h.subject, h.title, h.deadline, COALESCE(array_to_json(h.reminder_days)::text, '[]'),
-			COALESCE(s.is_completed, FALSE), s.completed_at
-		FROM homework h
-		LEFT JOIN homework_status s ON s.homework_id = h.id
-		WHERE h.chat_id = $1
-		ORDER BY COALESCE(s.is_completed, FALSE), h.deadline ASC, h.id ASC`, userID)
-	if err != nil {
-		log.Printf("list homework: %v", err)
-		http.Error(w, "database error", http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
-
-	now := time.Now().In(b.config.TZ)
-	items := make([]apiHomework, 0)
-	for rows.Next() {
-		var item homework
-		var completed bool
-		var completedAt sql.NullTime
-		var reminderDaysJSON string
-		if err := rows.Scan(&item.ID, &item.Subject, &item.Title, &item.Deadline, &reminderDaysJSON, &completed, &completedAt); err != nil {
-			log.Printf("scan homework: %v", err)
-			http.Error(w, "database error", http.StatusInternalServerError)
-			return
-		}
-		if err := json.Unmarshal([]byte(reminderDaysJSON), &item.ReminderDays); err != nil {
-			log.Printf("decode homework reminder days: %v", err)
-			http.Error(w, "database error", http.StatusInternalServerError)
-			return
-		}
-		deadline := item.Deadline.In(b.config.TZ)
-		apiItem := apiHomework{
-			ID:        item.ID,
-			Subject:   item.Subject,
-			Title:     item.Title,
-			Deadline:  deadline.Format("2006-01-02"),
-			DaysLeft:  calendarDays(now, deadline, b.config.TZ),
-			Completed: completed,
-		}
-		if completedAt.Valid {
-			apiItem.CompletedAt = completedAt.Time.In(b.config.TZ).Format("2006-01-02")
-		}
-		items = append(items, apiItem)
-	}
-	if err := rows.Err(); err != nil {
-		log.Printf("list homework rows: %v", err)
-		http.Error(w, "database error", http.StatusInternalServerError)
-		return
-	}
-	writeJSON(w, items)
-}
-
-func (b *Bot) apiCreateHomework(w http.ResponseWriter, r *http.Request, userID int64) {
-	var req createHomeworkRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
-		return
-	}
-	req.Subject = strings.TrimSpace(req.Subject)
-	req.Title = strings.TrimSpace(req.Title)
-	if req.Subject == "" || req.Title == "" || req.Deadline == "" {
-		http.Error(w, "subject, title and deadline are required", http.StatusBadRequest)
-		return
-	}
-	if len(req.ReminderDays) > 0 && !validReminderDays(req.ReminderDays) {
-		http.Error(w, "reminder_days must contain exactly one value from 1 to 20", http.StatusBadRequest)
-		return
-	}
-	deadline, err := time.ParseInLocation("2006-01-02", req.Deadline, b.config.TZ)
-	if err != nil {
-		http.Error(w, "deadline must be in YYYY-MM-DD format", http.StatusBadRequest)
-		return
-	}
-
-	var id int64
-	err = b.db.QueryRowContext(r.Context(),
-		`WITH new_homework AS (
-			INSERT INTO homework (chat_id, subject, title, deadline, reminder_days)
-			VALUES ($1, $2, $3, $4, $5::smallint[])
-			RETURNING id
-		)
-		INSERT INTO homework_status (homework_id, is_completed)
-		SELECT id, FALSE FROM new_homework
-		RETURNING homework_id`,
-		userID, req.Subject, req.Title, deadline, nullableIntArray(req.ReminderDays),
-	).Scan(&id)
-	if err != nil {
-		log.Printf("create homework: %v", err)
-		http.Error(w, "database error", http.StatusInternalServerError)
-		return
-	}
-
-	now := time.Now().In(b.config.TZ)
-	writeJSON(w, apiHomework{
-		ID:           id,
-		Subject:      req.Subject,
-		Title:        req.Title,
-		Deadline:     deadline.Format("2006-01-02"),
-		ReminderDays: req.ReminderDays,
-		DaysLeft:     calendarDays(now, deadline, b.config.TZ),
-	})
-}
-
-func validReminderDays(days []int) bool {
-	if len(days) != 1 {
-		return false
-	}
-	return days[0] >= 1 && days[0] <= 20
-}
-
-func nullableIntArray(days []int) interface{} {
-	if len(days) == 0 {
-		return nil
-	}
-	values := make([]string, len(days))
-	for i, day := range days {
-		values[i] = strconv.Itoa(day)
-	}
-	return "{" + strings.Join(values, ",") + "}"
-}
-
 func writeJSON(w http.ResponseWriter, v interface{}) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	if err := json.NewEncoder(w).Encode(v); err != nil {
@@ -752,7 +473,7 @@ func (b *Bot) setMenuButton(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	endpoint := fmt.Sprintf("https://api.telegram.org/bot%s/setChatMenuButton", b.config.Token)
+	endpoint := fmt.Sprintf("https://api.telegram.org/bot%s/setChatMenuButton", b.config.TelegramBotToken)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(string(body)))
 	if err != nil {
 		return err
@@ -788,7 +509,7 @@ func (b *Bot) sendWebAppButton(ctx context.Context, chatID int64, text, buttonTe
 	if err != nil {
 		return err
 	}
-	endpoint := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", b.config.Token)
+	endpoint := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", b.config.TelegramBotToken)
 	form := url.Values{"chat_id": {fmt.Sprint(chatID)}, "text": {text}, "reply_markup": {string(markup)}}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(form.Encode()))
 	if err != nil {

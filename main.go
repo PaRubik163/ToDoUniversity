@@ -11,25 +11,20 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"homework-reminder-bot/internal/config"
+	"homework-reminder-bot/internal/domain"
 )
 
 const pollTimeout = 25 * time.Second
 
-type Config struct {
-	Token      string
-	TZ         *time.Location
-	MiniAppURL string
-}
-
 type Bot struct {
-	config Config
+	config config.Config
 	db     *sql.DB
 	client *http.Client
 }
@@ -55,32 +50,16 @@ type Message struct {
 	Text string `json:"text"`
 }
 
-type homework struct {
-	ID           int64
-	Subject      string
-	Title        string
-	Deadline     time.Time
-	ReminderDays []int
-}
+type homework = domain.Homework
 
 func main() {
 	ctx := context.Background()
-	token := strings.TrimSpace(os.Getenv("TELEGRAM_BOT_TOKEN"))
-	databaseURL := strings.TrimSpace(os.Getenv("DATABASE_URL"))
-	if token == "" || databaseURL == "" {
-		log.Fatal("set TELEGRAM_BOT_TOKEN and DATABASE_URL")
-	}
-
-	tzName := os.Getenv("BOT_TIMEZONE")
-	if tzName == "" {
-		tzName = "Europe/Moscow"
-	}
-	tz, err := time.LoadLocation(tzName)
+	appConfig, err := config.Load()
 	if err != nil {
-		log.Fatalf("invalid BOT_TIMEZONE: %v", err)
+		log.Fatalf("load configuration: %v", err)
 	}
 
-	db, err := sql.Open("pgx", databaseURL)
+	db, err := sql.Open("pgx", appConfig.DatabaseURL)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -92,19 +71,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	miniAppURL := strings.TrimSpace(os.Getenv("MINI_APP_URL"))
-	port := strings.TrimSpace(os.Getenv("PORT"))
-	if port == "" {
-		port = "8080"
-	}
-
 	b := &Bot{
-		config: Config{Token: token, TZ: tz, MiniAppURL: miniAppURL},
+		config: appConfig,
 		db:     db,
 		client: &http.Client{Timeout: pollTimeout + 10*time.Second},
 	}
 
-	if miniAppURL != "" {
+	if appConfig.MiniAppURL != "" {
 		if err := b.setMenuButton(ctx); err != nil {
 			log.Printf("set menu button: %v", err)
 		}
@@ -114,7 +87,7 @@ func main() {
 
 	go b.reminderLoop(ctx)
 	go func() {
-		if err := b.startWebServer(ctx, ":"+port); err != nil {
+		if err := b.startWebServer(ctx, ":"+appConfig.Port); err != nil {
 			log.Fatalf("web server: %v", err)
 		}
 	}()
@@ -216,7 +189,7 @@ func (b *Bot) poll(ctx context.Context) error {
 }
 
 func (b *Bot) getUpdates(ctx context.Context, offset int64) ([]Update, error) {
-	endpoint := fmt.Sprintf("https://api.telegram.org/bot%s/getUpdates", b.config.Token)
+	endpoint := fmt.Sprintf("https://api.telegram.org/bot%s/getUpdates", b.config.TelegramBotToken)
 	form := url.Values{"timeout": {"25"}, "offset": {fmt.Sprint(offset)}}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(form.Encode()))
 	if err != nil {
@@ -273,7 +246,7 @@ func (b *Bot) handleMessage(ctx context.Context, msg *Message) error {
 	case strings.HasPrefix(text, "/remindtime"):
 		return b.setReminderTimeText(ctx, msg.Chat.ID, text)
 	case strings.Contains(strings.ToLower(text), "предмет:"):
-		subject, title, deadline, err := parseHomework(text, b.config.TZ, time.Now().In(b.config.TZ))
+		subject, title, deadline, err := parseHomework(text, b.config.Timezone, time.Now().In(b.config.Timezone))
 		if err != nil {
 			return b.sendMessage(ctx, msg.Chat.ID, "Не удалось прочитать задание: "+err.Error()+"\n\n"+formatExample)
 		}
@@ -365,7 +338,7 @@ func (b *Bot) editHomeworkText(ctx context.Context, chatID int64, text string) e
 	if len(lines) < 2 {
 		return b.sendMessage(ctx, chatID, "Не хватает полей после номера.\n\n"+editExample)
 	}
-	subject, title, deadline, err := parseHomework(lines[1], b.config.TZ, time.Now().In(b.config.TZ))
+	subject, title, deadline, err := parseHomework(lines[1], b.config.Timezone, time.Now().In(b.config.Timezone))
 	if err != nil {
 		return b.sendMessage(ctx, chatID, "Не удалось прочитать задание: "+err.Error()+"\n\n"+editExample)
 	}
@@ -443,12 +416,12 @@ func (b *Bot) sendHomeworkList(ctx context.Context, chatID int64) error {
 		return b.sendMessage(ctx, chatID, "Список заданий пуст.")
 	}
 
-	now := time.Now().In(b.config.TZ)
+	now := time.Now().In(b.config.Timezone)
 	var out strings.Builder
 	out.WriteString("Задания по приоритету (ближайший дедлайн — выше):\n")
 	for i, item := range items {
-		deadline := item.Deadline.In(b.config.TZ)
-		days := calendarDays(now, deadline, b.config.TZ)
+		deadline := item.Deadline.In(b.config.Timezone)
+		days := domain.CalendarDays(now, deadline, b.config.Timezone)
 		status := fmt.Sprintf("осталось %d дн.", days)
 		if days < 0 {
 			status = fmt.Sprintf("просрочено на %d дн.", -days)
@@ -472,7 +445,7 @@ func (b *Bot) reminderLoop(ctx context.Context) {
 			timer.Stop()
 			return
 		case <-timer.C:
-			local := time.Now().In(b.config.TZ)
+			local := time.Now().In(b.config.Timezone)
 			b.sendDueReminders(ctx, local.Hour(), local.Minute())
 			timer.Reset(time.Minute)
 		}
@@ -498,7 +471,7 @@ func (b *Bot) sendDueReminders(ctx context.Context, hour, minute int) {
 		return
 	}
 	defer rows.Close()
-	today := time.Now().In(b.config.TZ).Format("2006-01-02")
+	today := time.Now().In(b.config.Timezone).Format("2006-01-02")
 	reminderTime := fmt.Sprintf("%02d:%02d", hour, minute)
 	for rows.Next() {
 		var item homework
@@ -508,7 +481,7 @@ func (b *Bot) sendDueReminders(ctx context.Context, hour, minute int) {
 			log.Print(err)
 			continue
 		}
-		days := calendarDays(time.Now().In(b.config.TZ), item.Deadline.In(b.config.TZ), b.config.TZ)
+		days := domain.CalendarDays(time.Now().In(b.config.Timezone), item.Deadline.In(b.config.Timezone), b.config.Timezone)
 		if days > 0 {
 			var configuredDays []int
 			if err := json.Unmarshal([]byte(reminderDaysJSON), &configuredDays); err != nil {
@@ -541,7 +514,7 @@ func (b *Bot) sendDueReminders(ctx context.Context, hour, minute int) {
 		} else if days >= 2 && days <= 4 {
 			word = "дня"
 		}
-		message := fmt.Sprintf("⏰ Напоминание\n%s — %s\nДо дедлайна осталось %d %s (%s).", item.Subject, item.Title, days, word, item.Deadline.In(b.config.TZ).Format("02.01.2006"))
+		message := fmt.Sprintf("⏰ Напоминание\n%s — %s\nДо дедлайна осталось %d %s (%s).", item.Subject, item.Title, days, word, item.Deadline.In(b.config.Timezone).Format("02.01.2006"))
 		if days < 0 {
 			overdueDays := -days
 			overdueWord := "дней"
@@ -550,7 +523,7 @@ func (b *Bot) sendDueReminders(ctx context.Context, hour, minute int) {
 			} else if overdueDays >= 2 && overdueDays <= 4 {
 				overdueWord = "дня"
 			}
-			message = fmt.Sprintf("⚠️ Дедлайн истек %d %s назад\n%s — %s (дедлайн: %s).", overdueDays, overdueWord, item.Subject, item.Title, item.Deadline.In(b.config.TZ).Format("02.01.2006"))
+			message = fmt.Sprintf("⚠️ Дедлайн истек %d %s назад\n%s — %s (дедлайн: %s).", overdueDays, overdueWord, item.Subject, item.Title, item.Deadline.In(b.config.Timezone).Format("02.01.2006"))
 		} else if days == 0 {
 			message = fmt.Sprintf("⏰ Дедлайн сегодня!\n%s — %s", item.Subject, item.Title)
 		}
@@ -561,7 +534,7 @@ func (b *Bot) sendDueReminders(ctx context.Context, hour, minute int) {
 }
 
 func (b *Bot) sendMessage(ctx context.Context, chatID int64, text string) error {
-	endpoint := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", b.config.Token)
+	endpoint := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", b.config.TelegramBotToken)
 	form := url.Values{"chat_id": {fmt.Sprint(chatID)}, "text": {text}}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(form.Encode()))
 	if err != nil {
@@ -633,12 +606,6 @@ func parseRussianDate(value string, tz *time.Location, now time.Time) (time.Time
 		date = date.AddDate(1, 0, 0)
 	}
 	return date, nil
-}
-
-func calendarDays(from, to time.Time, tz *time.Location) int {
-	a := time.Date(from.Year(), from.Month(), from.Day(), 0, 0, 0, 0, tz)
-	b := time.Date(to.Year(), to.Month(), to.Day(), 0, 0, 0, 0, tz)
-	return int(b.Sub(a).Hours() / 24)
 }
 
 const formatExample = "Формат:\nПредмет: Разработка безопасного ПО\nЗадание: Практическая 1\nДедлайн: 6 октября"
