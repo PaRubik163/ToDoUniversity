@@ -705,8 +705,8 @@
     title.textContent = item.title;
 
     const deadline = document.createElement("p");
-    deadline.className = "item-deadline " + deadlineClass(item.days_left);
-    deadline.textContent = formatDeadline(item.deadline, item.days_left);
+    deadline.className = "item-deadline " + (item.completed ? "completed" : deadlineClass(item.days_left));
+    deadline.textContent = item.completed ? formatDate(item.deadline) : formatDeadline(item.deadline, item.days_left);
 
     body.appendChild(subject);
     body.appendChild(title);
