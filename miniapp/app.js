@@ -28,7 +28,7 @@
       weekRange: "Неделя: {from} — {to}", monthGraphTitle: "Выполнено по дням — {month}",
       weekChartAria: "Выполненные задания за текущую неделю", monthChartAria: "Выполненные задания за выбранный месяц",
       chartCount: "{date}: {count}", eventHourUnit: "\u0447\u0430\u0441.",
-      calendar: "\u041f\u043e\u0441\u0442\u043e\u044f\u043d\u043d\u044b\u0435", newEvent: "\u041d\u043e\u0432\u043e\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u0435", eventTitle: "\u0421\u043e\u0431\u044b\u0442\u0438\u0435", eventDateTime: "\u0414\u0430\u0442\u0430 \u0438 \u0432\u0440\u0435\u043c\u044f", remindHours: "\u041d\u0430\u043f\u043e\u043c\u043d\u0438\u0442\u044c \u0437\u0430 (\u0447\u0430\u0441\u043e\u0432)", eventsForDay: "\u0421\u043e\u0431\u044b\u0442\u0438\u044f \u0434\u043d\u044f", addEvent: "+ \u0421\u043e\u0431\u044b\u0442\u0438\u0435", noEvents: "\u041d\u0430 \u044d\u0442\u0443 \u0434\u0430\u0442\u0443 \u0441\u043e\u0431\u044b\u0442\u0438\u0439 \u043d\u0435\u0442.", eventDelete: "\u0423\u0434\u0430\u043b\u0438\u0442\u044c \u044d\u0442\u043e \u0441\u043e\u0431\u044b\u0442\u0438\u0435?", eventError: "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c: ", eventDone: "\u0413\u043e\u0442\u043e\u0432\u043e", eventUndo: "\u0412\u0435\u0440\u043d\u0443\u0442\u044c", noReminder: "\u0411\u0435\u0437 \u043d\u0430\u043f\u043e\u043c\u0438\u043d\u0430\u043d\u0438\u044f"
+      calendar: "\u041f\u043e\u0441\u0442\u043e\u044f\u043d\u043d\u044b\u0435", newEvent: "\u041d\u043e\u0432\u043e\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u0435", editEvent: "\u0418\u0437\u043c\u0435\u043d\u0438\u0442\u044c \u0441\u043e\u0431\u044b\u0442\u0438\u0435", eventTitle: "\u0421\u043e\u0431\u044b\u0442\u0438\u0435", eventDateTime: "\u0414\u0430\u0442\u0430 \u0438 \u0432\u0440\u0435\u043c\u044f", remindHours: "\u041d\u0430\u043f\u043e\u043c\u043d\u0438\u0442\u044c \u0437\u0430 (\u0447\u0430\u0441\u043e\u0432)", eventsForDay: "\u0421\u043e\u0431\u044b\u0442\u0438\u044f \u0434\u043d\u044f", addEvent: "+ \u0421\u043e\u0431\u044b\u0442\u0438\u0435", noEvents: "\u041d\u0430 \u044d\u0442\u0443 \u0434\u0430\u0442\u0443 \u0441\u043e\u0431\u044b\u0442\u0438\u0439 \u043d\u0435\u0442.", eventDelete: "\u0423\u0434\u0430\u043b\u0438\u0442\u044c \u044d\u0442\u043e \u0441\u043e\u0431\u044b\u0442\u0438\u0435?", eventError: "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c: ", eventDone: "\u0413\u043e\u0442\u043e\u0432\u043e", eventUndo: "\u0412\u0435\u0440\u043d\u0443\u0442\u044c", noReminder: "\u0411\u0435\u0437 \u043d\u0430\u043f\u043e\u043c\u0438\u043d\u0430\u043d\u0438\u044f"
     },
     en: {
       appTitle: "Tasks", settingsAria: "Settings", addTaskAria: "Add task",
@@ -55,7 +55,7 @@
       dueToday: "due today", daysLeft: "{days} {unit} left", dayUnit: "days", dayUnitOne: "day", dayUnitFew: "days",
       weekRange: "Week: {from} — {to}", monthGraphTitle: "Completed by day — {month}",
       weekChartAria: "Tasks completed this week", monthChartAria: "Tasks completed in selected month",
-      chartCount: "{date}: {count}", eventHourUnit: "h", calendar: "Calendar", newEvent: "New event", eventTitle: "Event", eventDateTime: "Date and time", remindHours: "Remind me (hours before)", eventsForDay: "Events for this day", addEvent: "+ Event", noEvents: "No events on this date.", eventDelete: "Delete this event?", eventError: "Could not save event: ", eventDone: "Done", eventUndo: "Undo", noReminder: "No reminder"
+      chartCount: "{date}: {count}", eventHourUnit: "h", calendar: "Calendar", newEvent: "New event", editEvent: "Edit event", eventTitle: "Event", eventDateTime: "Date and time", remindHours: "Remind me (hours before)", eventsForDay: "Events for this day", addEvent: "+ Event", noEvents: "No events on this date.", eventDelete: "Delete this event?", eventError: "Could not save event: ", eventDone: "Done", eventUndo: "Undo", noReminder: "No reminder"
     },
     zh: {
       appTitle: "任务", settingsAria: "设置", addTaskAria: "添加任务", settingsTitle: "设置", reminderDaysLabel: "提前提醒",
@@ -123,10 +123,10 @@
     }
   };
   const extraCalendarTranslations = {
-    zh: { calendar: "日历", newEvent: "新事件", eventTitle: "事件", eventDateTime: "日期和时间", remindHours: "提前提醒（小时）", eventsForDay: "当天事件", addEvent: "+ 事件", noEvents: "这一天没有事件。", eventDelete: "删除此事件？", eventError: "保存失败：", eventDone: "完成", eventUndo: "撤销", noReminder: "不提醒", eventHourUnit: "小时" },
-    es: { calendar: "Calendario", newEvent: "Nuevo evento", eventTitle: "Evento", eventDateTime: "Fecha y hora", remindHours: "Avisar con (horas de antelación)", eventsForDay: "Eventos del día", addEvent: "+ Evento", noEvents: "No hay eventos en esta fecha.", eventDelete: "¿Eliminar este evento?", eventError: "No se pudo guardar: ", eventDone: "Hecho", eventUndo: "Deshacer", noReminder: "Sin aviso", eventHourUnit: "h" },
-    ar: { calendar: "التقويم", newEvent: "حدث جديد", eventTitle: "الحدث", eventDateTime: "التاريخ والوقت", remindHours: "التذكير قبل (ساعات)", eventsForDay: "أحداث اليوم", addEvent: "+ حدث", noEvents: "لا توجد أحداث في هذا التاريخ.", eventDelete: "هل تريد حذف هذا الحدث؟", eventError: "تعذر الحفظ: ", eventDone: "تم", eventUndo: "تراجع", noReminder: "بدون تذكير", eventHourUnit: "س" },
-    hy: { calendar: "Օրացույց", newEvent: "Նոր իրադարձություն", eventTitle: "Իրադարձություն", eventDateTime: "Ամսաթիվ և ժամ", remindHours: "Հիշեցնել (ժամ առաջ)", eventsForDay: "Օրվա իրադարձությունները", addEvent: "+ Իրադարձություն", noEvents: "Այս օրը իրադարձություններ չկան։", eventDelete: "Ջնջե՞լ իրադարձությունը։", eventError: "Չհաջողվեց պահպանել․ ", eventDone: "Կատարված է", eventUndo: "Հետարկել", noReminder: "Առանց հիշեցման", eventHourUnit: "ժ" }
+    zh: { calendar: "日历", newEvent: "新事件", editEvent: "编辑事件", eventTitle: "事件", eventDateTime: "日期和时间", remindHours: "提前提醒（小时）", eventsForDay: "当天事件", addEvent: "+ 事件", noEvents: "这一天没有事件。", eventDelete: "删除此事件？", eventError: "保存失败：", eventDone: "完成", eventUndo: "撤销", noReminder: "不提醒", eventHourUnit: "小时" },
+    es: { calendar: "Calendario", newEvent: "Nuevo evento", editEvent: "Editar evento", eventTitle: "Evento", eventDateTime: "Fecha y hora", remindHours: "Avisar con (horas de antelación)", eventsForDay: "Eventos del día", addEvent: "+ Evento", noEvents: "No hay eventos en esta fecha.", eventDelete: "¿Eliminar este evento?", eventError: "No se pudo guardar: ", eventDone: "Hecho", eventUndo: "Deshacer", noReminder: "Sin aviso", eventHourUnit: "h" },
+    ar: { calendar: "التقويم", newEvent: "حدث جديد", editEvent: "تعديل الحدث", eventTitle: "الحدث", eventDateTime: "التاريخ والوقت", remindHours: "التذكير قبل (ساعات)", eventsForDay: "أحداث اليوم", addEvent: "+ حدث", noEvents: "لا توجد أحداث في هذا التاريخ.", eventDelete: "هل تريد حذف هذا الحدث؟", eventError: "تعذر الحفظ: ", eventDone: "تم", eventUndo: "تراجع", noReminder: "بدون تذكير", eventHourUnit: "س" },
+    hy: { calendar: "Օրացույց", newEvent: "Նոր իրադարձություն", editEvent: "Խմբագրել իրադարձությունը", eventTitle: "Իրադարձություն", eventDateTime: "Ամսաթիվ և ժամ", remindHours: "Հիշեցնել (ժամ առաջ)", eventsForDay: "Օրվա իրադարձությունները", addEvent: "+ Իրադարձություն", noEvents: "Այս օրը իրադարձություններ չկան։", eventDelete: "Ջնջե՞լ իրադարձությունը։", eventError: "Չհաջողվեց պահպանել․ ", eventDone: "Կատարված է", eventUndo: "Հետարկել", noReminder: "Առանց հիշեցման", eventHourUnit: "ժ" }
   };
   Object.keys(extraCalendarTranslations).forEach(function (locale) {
     Object.assign(translations[locale], extraCalendarTranslations[locale]);
@@ -199,6 +199,7 @@
   let calendarMonth = new Date().getFullYear() + "-" + String(new Date().getMonth() + 1).padStart(2, "0");
   let selectedCalendarDate = new Date().getFullYear() + "-" + String(new Date().getMonth() + 1).padStart(2, "0") + "-" + String(new Date().getDate()).padStart(2, "0");
   let calendarEvents = [];
+  let editingEventId = null;
 
   if (tg) {
     tg.ready();
@@ -637,16 +638,30 @@
     const actions = document.createElement("div"); actions.className = "item-actions";
     const complete = document.createElement("button"); complete.type = "button"; complete.className = "icon-action complete-button" + (item.completed ? " is-completed" : ""); complete.textContent = item.completed ? "↶" : "✓"; complete.setAttribute("aria-label", item.completed ? t("eventUndo") : t("eventDone"));
     complete.addEventListener("click", function () { apiFetch("/api/events/" + item.id + "/status", { method: "PUT", body: JSON.stringify({ completed: !item.completed }) }).then(refreshEvents).then(loadAnalytics).catch(function (err) { setStatus(t("statusError") + err.message); }); });
+    const edit = document.createElement("button"); edit.type = "button"; edit.className = "icon-action edit-button"; edit.textContent = "✎"; edit.setAttribute("aria-label", t("editTaskAria"));
+    edit.addEventListener("click", function () { openEventEditForm(item); });
     const remove = document.createElement("button"); remove.type = "button"; remove.className = "icon-action delete-button"; remove.textContent = "×"; remove.setAttribute("aria-label", t("deleteTaskAria"));
     remove.addEventListener("click", function () { const ok = tg && tg.showConfirm ? new Promise(function (resolve) { tg.showConfirm(t("eventDelete"), resolve); }) : Promise.resolve(window.confirm(t("eventDelete"))); ok.then(function (yes) { if (yes) apiFetch("/api/events/" + item.id, { method: "DELETE" }).then(refreshEvents).then(loadAnalytics).catch(function (err) { setStatus(t("eventError") + err.message); }); }); });
-    actions.append(complete, remove); li.append(body, actions); return li;
+    actions.append(complete, edit, remove); li.append(body, actions); return li;
   }
 
   function openEventForm() {
+    editingEventId = null;
     formEl.classList.add("hidden"); settingsFormEl.classList.add("hidden");
     eventFormEl.reset(); eventReminderInput.value = "1";
     eventDateInput.value = selectedCalendarDate + "T09:00";
     eventErrorEl.classList.add("hidden"); eventErrorEl.textContent = "";
+    eventFormEl.querySelector(".form-title").textContent = t("newEvent");
+    eventFormEl.classList.remove("hidden"); eventTitleInput.focus();
+  }
+
+  function openEventEditForm(item) {
+    editingEventId = item.id;
+    eventTitleInput.value = item.title;
+    eventDateInput.value = item.event_at.slice(0, 16);
+    eventReminderInput.value = String(item.reminder_hours);
+    eventErrorEl.classList.add("hidden"); eventErrorEl.textContent = "";
+    eventFormEl.querySelector(".form-title").textContent = t("editEvent");
     eventFormEl.classList.remove("hidden"); eventTitleInput.focus();
   }
 
@@ -654,7 +669,9 @@
     event.preventDefault();
     const payload = { title: eventTitleInput.value.trim(), event_at: eventDateInput.value, reminder_hours: Number(eventReminderInput.value) };
     if (!payload.title || !payload.event_at || payload.reminder_hours < 0 || payload.reminder_hours > 168) { eventErrorEl.textContent = t("fillAll"); eventErrorEl.classList.remove("hidden"); return; }
-    apiFetch("/api/events", { method: "POST", body: JSON.stringify(payload) }).then(function () {
+    const url = editingEventId ? "/api/events/" + editingEventId : "/api/events";
+    apiFetch(url, { method: editingEventId ? "PUT" : "POST", body: JSON.stringify(payload) }).then(function () {
+      editingEventId = null;
       eventFormEl.classList.add("hidden"); calendarMonth = payload.event_at.slice(0, 7); selectedCalendarDate = payload.event_at.slice(0, 10); return refreshEvents().then(loadAnalytics);
     }).catch(function (err) { eventErrorEl.textContent = t("eventError") + err.message; eventErrorEl.classList.remove("hidden"); });
   }

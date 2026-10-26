@@ -82,6 +82,35 @@ func (b *Bot) handleEvents(w http.ResponseWriter, r *http.Request, userID int64)
 	}
 }
 
+func (b *Bot) saveEventChanges(w http.ResponseWriter, r *http.Request, userID, id int64) error {
+	var req calendarEventRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return err
+	}
+	req.Title = strings.TrimSpace(req.Title)
+	at, err := time.ParseInLocation("2006-01-02T15:04", strings.TrimSpace(req.EventAt), b.config.Timezone)
+	if req.Title == "" || len(req.Title) > 300 || err != nil || req.ReminderHours < 0 || req.ReminderHours > 168 {
+		http.Error(w, "title, event_at, or reminder_hours is invalid", http.StatusBadRequest)
+		return fmt.Errorf("invalid event fields")
+	}
+	result, err := b.db.ExecContext(r.Context(), `UPDATE calendar_events SET title=$3, event_at=$4, reminder_hours=$5 WHERE id=$1 AND chat_id=$2`, id, userID, req.Title, at, req.ReminderHours)
+	if err != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return err
+	}
+	if n, _ := result.RowsAffected(); n == 0 {
+		http.NotFound(w, r)
+		return fmt.Errorf("event not found")
+	}
+	if _, err := b.db.ExecContext(r.Context(), `DELETE FROM calendar_event_reminder_log WHERE event_id=$1`, id); err != nil {
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return err
+	}
+	writeJSON(w, calendarEvent{ID: id, Title: req.Title, EventAt: at.Format(time.RFC3339), ReminderHours: req.ReminderHours})
+	return nil
+}
+
 func (b *Bot) handleEventItem(w http.ResponseWriter, r *http.Request, userID int64) {
 	parts := strings.Split(strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/events/"), "/"), "/")
 	id, err := strconv.ParseInt(parts[0], 10, 64)
@@ -90,6 +119,10 @@ func (b *Bot) handleEventItem(w http.ResponseWriter, r *http.Request, userID int
 		return
 	}
 	switch {
+	case r.Method == http.MethodPut && len(parts) == 1:
+		if err := b.saveEventChanges(w, r, userID, id); err != nil {
+			return
+		}
 	case r.Method == http.MethodPut && len(parts) == 2 && parts[1] == "status":
 		var req struct {
 			Completed bool `json:"completed"`
