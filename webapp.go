@@ -48,6 +48,8 @@ func (b *Bot) startWebServer(ctx context.Context, addr string) error {
 	homeworkHandler := handler.NewHomeworkHandler(homeworkService, b.config.Timezone)
 	mux.HandleFunc("/api/homework", b.withAuth(homeworkHandler.Collection, userService))
 	mux.HandleFunc("/api/homework/", b.withAuth(homeworkHandler.Item, userService))
+	mux.HandleFunc("/api/events", b.withAuth(b.handleEvents, userService))
+	mux.HandleFunc("/api/events/", b.withAuth(b.handleEventItem, userService))
 	mux.HandleFunc("/api/settings", b.withAuth(b.handleSettings, userService))
 	mux.HandleFunc("/api/analytics", b.withAuth(b.handleAnalytics, userService))
 
@@ -209,11 +211,13 @@ func (b *Bot) handleAnalytics(w http.ResponseWriter, r *http.Request, userID int
 	result.CurrentMonth = now.Format("2006-01")
 	err := b.db.QueryRowContext(r.Context(), `
 		SELECT
-			COUNT(*) FILTER (WHERE COALESCE(s.is_completed, FALSE) = FALSE),
-			COUNT(*) FILTER (WHERE COALESCE(s.is_completed, FALSE) = FALSE AND h.deadline < $2)
-		FROM homework h
-		LEFT JOIN homework_status s ON s.homework_id = h.id
-		WHERE h.chat_id = $1`, userID, today).Scan(
+			COUNT(*) FILTER (WHERE completed = FALSE),
+			COUNT(*) FILTER (WHERE completed = FALSE AND due_at < $2)
+		FROM (
+			SELECT COALESCE(s.is_completed, FALSE) AS completed, h.deadline AS due_at FROM homework h LEFT JOIN homework_status s ON s.homework_id = h.id WHERE h.chat_id = $1
+			UNION ALL
+			SELECT is_completed, event_at FROM calendar_events WHERE chat_id = $1
+		) all_tasks`, userID, today).Scan(
 		&result.Uncompleted, &result.Overdue)
 	if err != nil {
 		log.Printf("get analytics: %v", err)
@@ -252,11 +256,13 @@ func (b *Bot) handleAnalytics(w http.ResponseWriter, r *http.Request, userID int
 
 func (b *Bot) completionCounts(ctx context.Context, userID int64, from, to time.Time) (map[string]int, error) {
 	rows, err := b.db.QueryContext(ctx, `
-		SELECT TO_CHAR((s.completed_at AT TIME ZONE $4)::date, 'YYYY-MM-DD'), COUNT(*)
-		FROM homework_status s
-		JOIN homework h ON h.id = s.homework_id
-		WHERE h.chat_id = $1 AND s.is_completed = TRUE
-		  AND s.completed_at >= $2 AND s.completed_at < $3
+		SELECT TO_CHAR((completed_at AT TIME ZONE $4)::date, 'YYYY-MM-DD'), COUNT(*)
+		FROM (
+			SELECT s.completed_at FROM homework_status s JOIN homework h ON h.id = s.homework_id WHERE h.chat_id = $1 AND s.is_completed = TRUE
+			UNION ALL
+			SELECT completed_at FROM calendar_events WHERE chat_id = $1 AND is_completed = TRUE
+		) completed_items
+		WHERE completed_at >= $2 AND completed_at < $3
 		GROUP BY 1`, userID, from, to, b.config.Timezone.String())
 	if err != nil {
 		return nil, err

@@ -447,8 +447,48 @@ func (b *Bot) reminderLoop(ctx context.Context) {
 		case <-timer.C:
 			local := time.Now().In(b.config.Timezone)
 			b.sendDueReminders(ctx, local.Hour(), local.Minute())
+			b.sendDueEventReminders(ctx, local)
 			timer.Reset(time.Minute)
 		}
+	}
+}
+
+func (b *Bot) sendDueEventReminders(ctx context.Context, now time.Time) {
+	rows, err := b.db.QueryContext(ctx, `
+		SELECT id, chat_id, title, event_at
+		FROM calendar_events
+		WHERE is_completed = FALSE AND reminder_hours > 0
+		  AND event_at - reminder_hours * interval '1 hour' >= $1 - interval '1 minute'
+		  AND event_at - reminder_hours * interval '1 hour' < $1`, now)
+	if err != nil {
+		log.Printf("event reminder query: %v", err)
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id, chatID int64
+		var title string
+		var eventAt time.Time
+		if err := rows.Scan(&id, &chatID, &title, &eventAt); err != nil {
+			log.Printf("scan event reminder: %v", err)
+			continue
+		}
+		result, err := b.db.ExecContext(ctx, `INSERT INTO calendar_event_reminder_log (event_id) VALUES ($1) ON CONFLICT DO NOTHING`, id)
+		if err != nil {
+			log.Printf("log event reminder: %v", err)
+			continue
+		}
+		added, _ := result.RowsAffected()
+		if added == 0 {
+			continue
+		}
+		message := fmt.Sprintf("📅 Напоминание о событии\n%s\n%s", title, eventAt.In(b.config.Timezone).Format("02.01.2006 в 15:04"))
+		if err := b.sendMessage(ctx, chatID, message); err != nil {
+			log.Printf("send event reminder: %v", err)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		log.Printf("iterate event reminders: %v", err)
 	}
 }
 

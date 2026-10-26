@@ -88,6 +88,15 @@
     <p id="form-error" class="error hidden"></p>
   </form>
 
+  <form id="event-form" class="add-form hidden">
+    <p class="form-title" data-i18n="newEvent">Новое событие</p>
+    <label><span data-i18n="eventTitle">Событие</span><input id="event-title" type="text" maxlength="300" required></label>
+    <label><span data-i18n="eventDateTime">Дата и время</span><input id="event-date-time" type="datetime-local" required></label>
+    <label><span data-i18n="remindHours">Напомнить за (часов)</span><input id="event-reminder-hours" type="number" min="0" max="168" value="1" required></label>
+    <div class="form-actions"><button type="button" id="cancel-event" class="button secondary" data-i18n="cancel">Отмена</button><button type="submit" class="button primary" data-i18n="save">Сохранить</button></div>
+    <p id="event-error" class="error hidden"></p>
+  </form>
+
   <p id="status" class="status"></p>
 
   <nav class="sections" aria-label="Разделы заданий" data-i18n-aria="sectionsAria">
@@ -95,7 +104,16 @@
     <button class="section-button" type="button" data-section="completed" data-i18n="completed">Сделанные</button>
     <button class="section-button" type="button" data-section="overdue" data-i18n="overdue">Просроченные</button>
     <button class="section-button" type="button" data-section="analytics" data-i18n="analytics">Аналитика</button>
+    <button class="section-button" type="button" data-section="calendar" data-i18n="calendar">Постоянные</button>
   </nav>
+
+  <section id="calendar" class="calendar-panel hidden" aria-label="Календарь">
+    <div class="month-filter"><button id="calendar-prev" class="month-arrow" type="button" aria-label="Предыдущий месяц">&#8249;</button><strong id="calendar-month" class="calendar-month"></strong><button id="calendar-next" class="month-arrow" type="button" aria-label="Следующий месяц">&#8250;</button></div>
+    <div id="calendar-grid" class="calendar-grid"></div>
+    <div class="calendar-day-heading"><div><span class="calendar-kicker" data-i18n="eventsForDay">События дня</span><h2 id="calendar-day-title"></h2></div><button type="button" id="calendar-add-event" class="button primary" data-i18n="addEvent">+ Событие</button></div>
+    <ul id="event-list" class="list"></ul>
+    <p id="event-empty" class="empty hidden"></p>
+  </section>
 
   <section id="analytics" class="analytics hidden" aria-label="Аналитика" data-i18n-aria="analytics">
     <div class="month-filter">

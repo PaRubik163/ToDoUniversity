@@ -255,7 +255,7 @@ body {
 
 .sections {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 7px;
   margin: 0 0 20px;
 }
@@ -285,7 +285,7 @@ body {
 .section-button[data-section="overdue"].active { border-color: var(--red); background: var(--red-soft); color: #85443d; }
 
 .list { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
-.list.hidden, .analytics.hidden { display: none; }
+.list.hidden, .analytics.hidden, .calendar-panel.hidden { display: none; }
 
 .language-setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .language-label { color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .045em; text-transform: uppercase; }
@@ -429,6 +429,23 @@ body {
 .delete-button { color: var(--red); }
 .delete-button:hover { border-color: var(--red); background: var(--red-soft); }
 .empty { margin-top: 48px; color: var(--muted); font: 500 19px "Cormorant Garamond", Georgia, serif; text-align: center; }
+
+.calendar-panel { margin: 0 0 22px; padding: 16px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); box-shadow: var(--shadow); }
+.calendar-month { min-width: 170px; color: var(--ink); font: 600 22px/1.1 "Cormorant Garamond", Georgia, serif; text-align: center; text-transform: capitalize; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+.calendar-weekday { padding: 5px 0; color: var(--muted); font-size: 10px; font-weight: 800; text-align: center; text-transform: uppercase; }
+.calendar-date, .calendar-blank { display: flex; min-width: 0; min-height: 42px; align-items: center; justify-content: center; position: relative; border: 1px solid transparent; border-radius: 4px; background: transparent; color: var(--ink); font: 600 13px "Manrope", sans-serif; }
+.calendar-date { cursor: pointer; }
+.calendar-date:hover { border-color: var(--line); background: var(--surface-raised); }
+.calendar-date.selected { border-color: var(--olive); background: var(--olive); color: white; }
+.calendar-dot { position: absolute; bottom: 4px; left: 50%; width: 5px; height: 5px; transform: translateX(-50%); border-radius: 50%; background: var(--brass); }
+.calendar-date.selected .calendar-dot { background: #fff; }
+.calendar-day-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 19px 0 11px; padding-top: 14px; border-top: 1px solid var(--line); }
+.calendar-day-heading h2 { margin: 3px 0 0; font: 600 21px/1.1 "Cormorant Garamond", Georgia, serif; text-transform: capitalize; }
+.calendar-kicker { color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+.calendar-event.is-done .item-title { color: var(--muted); text-decoration: line-through; }
+.calendar-event .item-deadline { color: var(--brass); }
+.calendar-day-heading .button { min-height: 38px; padding: 7px 11px; font-size: 11px; }
 
 @media (max-width: 440px) {
   .app { padding: 24px 15px 38px; }

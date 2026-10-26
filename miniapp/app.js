@@ -27,7 +27,8 @@
       dueToday: "срок сегодня", daysLeft: "осталось {days} {unit}", dayUnit: "дней", dayUnitOne: "день", dayUnitFew: "дня",
       weekRange: "Неделя: {from} — {to}", monthGraphTitle: "Выполнено по дням — {month}",
       weekChartAria: "Выполненные задания за текущую неделю", monthChartAria: "Выполненные задания за выбранный месяц",
-      chartCount: "{date}: {count}"
+      chartCount: "{date}: {count}", eventHourUnit: "\u0447\u0430\u0441.",
+      calendar: "\u041f\u043e\u0441\u0442\u043e\u044f\u043d\u043d\u044b\u0435", newEvent: "\u041d\u043e\u0432\u043e\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u0435", eventTitle: "\u0421\u043e\u0431\u044b\u0442\u0438\u0435", eventDateTime: "\u0414\u0430\u0442\u0430 \u0438 \u0432\u0440\u0435\u043c\u044f", remindHours: "\u041d\u0430\u043f\u043e\u043c\u043d\u0438\u0442\u044c \u0437\u0430 (\u0447\u0430\u0441\u043e\u0432)", eventsForDay: "\u0421\u043e\u0431\u044b\u0442\u0438\u044f \u0434\u043d\u044f", addEvent: "+ \u0421\u043e\u0431\u044b\u0442\u0438\u0435", noEvents: "\u041d\u0430 \u044d\u0442\u0443 \u0434\u0430\u0442\u0443 \u0441\u043e\u0431\u044b\u0442\u0438\u0439 \u043d\u0435\u0442.", eventDelete: "\u0423\u0434\u0430\u043b\u0438\u0442\u044c \u044d\u0442\u043e \u0441\u043e\u0431\u044b\u0442\u0438\u0435?", eventError: "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c: ", eventDone: "\u0413\u043e\u0442\u043e\u0432\u043e", eventUndo: "\u0412\u0435\u0440\u043d\u0443\u0442\u044c", noReminder: "\u0411\u0435\u0437 \u043d\u0430\u043f\u043e\u043c\u0438\u043d\u0430\u043d\u0438\u044f"
     },
     en: {
       appTitle: "Tasks", settingsAria: "Settings", addTaskAria: "Add task",
@@ -54,7 +55,7 @@
       dueToday: "due today", daysLeft: "{days} {unit} left", dayUnit: "days", dayUnitOne: "day", dayUnitFew: "days",
       weekRange: "Week: {from} — {to}", monthGraphTitle: "Completed by day — {month}",
       weekChartAria: "Tasks completed this week", monthChartAria: "Tasks completed in selected month",
-      chartCount: "{date}: {count}"
+      chartCount: "{date}: {count}", eventHourUnit: "h", calendar: "Calendar", newEvent: "New event", eventTitle: "Event", eventDateTime: "Date and time", remindHours: "Remind me (hours before)", eventsForDay: "Events for this day", addEvent: "+ Event", noEvents: "No events on this date.", eventDelete: "Delete this event?", eventError: "Could not save event: ", eventDone: "Done", eventUndo: "Undo", noReminder: "No reminder"
     },
     zh: {
       appTitle: "任务", settingsAria: "设置", addTaskAria: "添加任务", settingsTitle: "设置", reminderDaysLabel: "提前提醒",
@@ -121,6 +122,15 @@
       weekChartAria: "Այս շաբաթ կատարված առաջադրանքները", monthChartAria: "Ընտրված ամսում կատարված առաջադրանքները", chartCount: "{date}՝ {count}"
     }
   };
+  const extraCalendarTranslations = {
+    zh: { calendar: "日历", newEvent: "新事件", eventTitle: "事件", eventDateTime: "日期和时间", remindHours: "提前提醒（小时）", eventsForDay: "当天事件", addEvent: "+ 事件", noEvents: "这一天没有事件。", eventDelete: "删除此事件？", eventError: "保存失败：", eventDone: "完成", eventUndo: "撤销", noReminder: "不提醒", eventHourUnit: "小时" },
+    es: { calendar: "Calendario", newEvent: "Nuevo evento", eventTitle: "Evento", eventDateTime: "Fecha y hora", remindHours: "Avisar con (horas de antelación)", eventsForDay: "Eventos del día", addEvent: "+ Evento", noEvents: "No hay eventos en esta fecha.", eventDelete: "¿Eliminar este evento?", eventError: "No se pudo guardar: ", eventDone: "Hecho", eventUndo: "Deshacer", noReminder: "Sin aviso", eventHourUnit: "h" },
+    ar: { calendar: "التقويم", newEvent: "حدث جديد", eventTitle: "الحدث", eventDateTime: "التاريخ والوقت", remindHours: "التذكير قبل (ساعات)", eventsForDay: "أحداث اليوم", addEvent: "+ حدث", noEvents: "لا توجد أحداث في هذا التاريخ.", eventDelete: "هل تريد حذف هذا الحدث؟", eventError: "تعذر الحفظ: ", eventDone: "تم", eventUndo: "تراجع", noReminder: "بدون تذكير", eventHourUnit: "س" },
+    hy: { calendar: "Օրացույց", newEvent: "Նոր իրադարձություն", eventTitle: "Իրադարձություն", eventDateTime: "Ամսաթիվ և ժամ", remindHours: "Հիշեցնել (ժամ առաջ)", eventsForDay: "Օրվա իրադարձությունները", addEvent: "+ Իրադարձություն", noEvents: "Այս օրը իրադարձություններ չկան։", eventDelete: "Ջնջե՞լ իրադարձությունը։", eventError: "Չհաջողվեց պահպանել․ ", eventDone: "Կատարված է", eventUndo: "Հետարկել", noReminder: "Առանց հիշեցման", eventHourUnit: "ժ" }
+  };
+  Object.keys(extraCalendarTranslations).forEach(function (locale) {
+    Object.assign(translations[locale], extraCalendarTranslations[locale]);
+  });
 
   const tg = window.Telegram && window.Telegram.WebApp;
   const initData = tg ? tg.initData : "";
@@ -130,6 +140,17 @@
   const statusEl = document.getElementById("status");
   const sectionButtons = Array.from(document.querySelectorAll(".section-button"));
   const analyticsEl = document.getElementById("analytics");
+  const calendarEl = document.getElementById("calendar");
+  const calendarGridEl = document.getElementById("calendar-grid");
+  const calendarMonthEl = document.getElementById("calendar-month");
+  const calendarDayTitleEl = document.getElementById("calendar-day-title");
+  const eventListEl = document.getElementById("event-list");
+  const eventEmptyEl = document.getElementById("event-empty");
+  const eventFormEl = document.getElementById("event-form");
+  const eventTitleInput = document.getElementById("event-title");
+  const eventDateInput = document.getElementById("event-date-time");
+  const eventReminderInput = document.getElementById("event-reminder-hours");
+  const eventErrorEl = document.getElementById("event-error");
   const weekRangeEl = document.getElementById("week-range");
   const statCompletedEl = document.getElementById("stat-completed");
   const statMonthCompletedEl = document.getElementById("stat-month-completed");
@@ -175,6 +196,9 @@
   let settingsOriginalTheme = "classic";
   let languageTouched = false;
   let analyticsData = null;
+  let calendarMonth = new Date().getFullYear() + "-" + String(new Date().getMonth() + 1).padStart(2, "0");
+  let selectedCalendarDate = new Date().getFullYear() + "-" + String(new Date().getMonth() + 1).padStart(2, "0") + "-" + String(new Date().getDate()).padStart(2, "0");
+  let calendarEvents = [];
 
   if (tg) {
     tg.ready();
@@ -191,6 +215,7 @@
     button.addEventListener("click", function () {
       currentSection = button.dataset.section;
       sectionButtons.forEach(function (item) { item.classList.toggle("active", item === button); });
+      if (currentSection !== "calendar") { eventFormEl.classList.add("hidden"); formEl.classList.add("hidden"); settingsFormEl.classList.add("hidden"); }
       renderCurrentSection();
     });
   });
@@ -203,6 +228,11 @@
   });
   monthPrevEl.addEventListener("click", function () { shiftSelectedMonth(-1); });
   monthNextEl.addEventListener("click", function () { shiftSelectedMonth(1); });
+  document.getElementById("calendar-prev").addEventListener("click", function () { shiftCalendarMonth(-1); });
+  document.getElementById("calendar-next").addEventListener("click", function () { shiftCalendarMonth(1); });
+  document.getElementById("calendar-add-event").addEventListener("click", openEventForm);
+  document.getElementById("cancel-event").addEventListener("click", function () { eventFormEl.classList.add("hidden"); });
+  eventFormEl.addEventListener("submit", submitEvent);
   languageSelectEl.addEventListener("change", function () {
     languageTouched = true;
     language = languageSelectEl.value;
@@ -226,6 +256,7 @@
   deadlineInput.addEventListener("change", updateDeadlineDisplay);
 
   addToggleEl.addEventListener("click", function () {
+    if (currentSection === "calendar") { openEventForm(); return; }
     const wasHidden = formEl.classList.contains("hidden");
     settingsFormEl.classList.add("hidden");
     if (wasHidden) {
@@ -443,7 +474,7 @@
 
   function loadHomework() {
     setStatus(t("loading"));
-    Promise.all([apiFetch("/api/homework"), fetchAnalytics(), apiFetch("/api/settings")])
+    Promise.all([apiFetch("/api/homework"), fetchAnalytics(), apiFetch("/api/settings"), fetchCalendarEvents()])
       .then(function (results) {
         homeworkItems = results[0] || [];
         language = results[2].language || telegramLanguage();
@@ -455,6 +486,8 @@
         applyLanguage();
         renderCurrentSection();
         renderAnalytics(results[1] || {});
+        calendarEvents = results[3] || [];
+        renderCalendar();
         setStatus("");
       })
       .catch(function (err) {
@@ -532,12 +565,16 @@
 
   function renderCurrentSection() {
     const analyticsMode = currentSection === "analytics";
+    const calendarMode = currentSection === "calendar";
+    addToggleEl.setAttribute("aria-label", calendarMode ? t("addEvent") : t("addTaskAria"));
     analyticsEl.classList.toggle("hidden", !analyticsMode);
-    listEl.classList.toggle("hidden", analyticsMode);
+    calendarEl.classList.toggle("hidden", !calendarMode);
+    listEl.classList.toggle("hidden", analyticsMode || calendarMode);
     if (analyticsMode) {
       emptyEl.classList.add("hidden");
       return;
     }
+    if (calendarMode) { emptyEl.classList.add("hidden"); renderCalendar(); return; }
     const items = homeworkItems.filter(function (item) {
       if (currentSection === "completed") return item.completed;
       if (currentSection === "overdue") return !item.completed && item.days_left < 0;
@@ -545,6 +582,84 @@
     });
     renderList(items);
   }
+
+  function shiftCalendarMonth(amount) {
+    const p = calendarMonth.split("-");
+    const d = new Date(Number(p[0]), Number(p[1]) - 1 + amount, 1);
+    calendarMonth = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+    selectedCalendarDate = calendarMonth + "-01";
+    fetchCalendarEvents().then(function (items) { calendarEvents = items || []; renderCalendar(); })
+      .catch(function (err) { setStatus(t("eventError") + err.message); });
+  }
+
+  function fetchCalendarEvents() { return apiFetch("/api/events?month=" + encodeURIComponent(calendarMonth)); }
+
+  function renderCalendar() {
+    const p = calendarMonth.split("-");
+    const year = Number(p[0]), month = Number(p[1]) - 1;
+    calendarMonthEl.textContent = new Date(year, month, 1).toLocaleDateString(languageLocale(), { month: "long", year: "numeric" });
+    calendarGridEl.replaceChildren();
+    const weekdayNames = [];
+    for (let i = 0; i < 7; i++) weekdayNames.push(new Date(2024, 0, 1 + i).toLocaleDateString(languageLocale(), { weekday: "short" }));
+    weekdayNames.forEach(function (name) { const label = document.createElement("span"); label.className = "calendar-weekday"; label.textContent = name; calendarGridEl.appendChild(label); });
+    const firstOffset = (new Date(year, month, 1).getDay() + 6) % 7;
+    const days = new Date(year, month + 1, 0).getDate();
+    for (let blank = 0; blank < firstOffset; blank++) { const spacer = document.createElement("span"); spacer.className = "calendar-blank"; calendarGridEl.appendChild(spacer); }
+    for (let day = 1; day <= days; day++) {
+      const key = calendarMonth + "-" + String(day).padStart(2, "0");
+      const button = document.createElement("button");
+      button.type = "button"; button.className = "calendar-date" + (key === selectedCalendarDate ? " selected" : "");
+      const count = calendarEvents.filter(function (item) { return eventDateKey(item) === key; }).length;
+      button.innerHTML = "<span>" + day + "</span>" + (count ? '<i class="calendar-dot" aria-label="' + count + '"></i>' : "");
+      button.addEventListener("click", function () { selectedCalendarDate = key; renderCalendar(); });
+      calendarGridEl.appendChild(button);
+    }
+    calendarDayTitleEl.textContent = formatDate(selectedCalendarDate);
+    const dayItems = calendarEvents.filter(function (item) { return eventDateKey(item) === selectedCalendarDate; });
+    eventListEl.replaceChildren();
+    eventEmptyEl.textContent = t("noEvents");
+    eventEmptyEl.classList.toggle("hidden", dayItems.length > 0);
+    dayItems.forEach(function (item) { eventListEl.appendChild(renderCalendarEvent(item)); });
+  }
+
+  function eventDateKey(item) {
+    return item.event_at.slice(0, 10);
+  }
+
+  function renderCalendarEvent(item) {
+    const li = document.createElement("li"); li.className = "item calendar-event" + (item.completed ? " is-done" : "");
+    const body = document.createElement("div"); body.className = "item-body";
+    const title = document.createElement("p"); title.className = "item-title"; title.textContent = item.title;
+    const details = document.createElement("p"); details.className = "item-deadline later";
+    details.textContent = item.event_at.slice(11, 16) + " · " + (item.reminder_hours ? item.reminder_hours + " " + t("eventHourUnit") : t("noReminder"));
+    body.append(title, details);
+    if (item.completed && item.completed_at) { const done = document.createElement("p"); done.className = "item-completed"; done.textContent = t("doneDate", { date: formatDate(item.completed_at.slice(0, 10)) }); body.appendChild(done); }
+    const actions = document.createElement("div"); actions.className = "item-actions";
+    const complete = document.createElement("button"); complete.type = "button"; complete.className = "icon-action complete-button" + (item.completed ? " is-completed" : ""); complete.textContent = item.completed ? "↶" : "✓"; complete.setAttribute("aria-label", item.completed ? t("eventUndo") : t("eventDone"));
+    complete.addEventListener("click", function () { apiFetch("/api/events/" + item.id + "/status", { method: "PUT", body: JSON.stringify({ completed: !item.completed }) }).then(refreshEvents).then(loadAnalytics).catch(function (err) { setStatus(t("statusError") + err.message); }); });
+    const remove = document.createElement("button"); remove.type = "button"; remove.className = "icon-action delete-button"; remove.textContent = "×"; remove.setAttribute("aria-label", t("deleteTaskAria"));
+    remove.addEventListener("click", function () { const ok = tg && tg.showConfirm ? new Promise(function (resolve) { tg.showConfirm(t("eventDelete"), resolve); }) : Promise.resolve(window.confirm(t("eventDelete"))); ok.then(function (yes) { if (yes) apiFetch("/api/events/" + item.id, { method: "DELETE" }).then(refreshEvents).then(loadAnalytics).catch(function (err) { setStatus(t("eventError") + err.message); }); }); });
+    actions.append(complete, remove); li.append(body, actions); return li;
+  }
+
+  function openEventForm() {
+    formEl.classList.add("hidden"); settingsFormEl.classList.add("hidden");
+    eventFormEl.reset(); eventReminderInput.value = "1";
+    eventDateInput.value = selectedCalendarDate + "T09:00";
+    eventErrorEl.classList.add("hidden"); eventErrorEl.textContent = "";
+    eventFormEl.classList.remove("hidden"); eventTitleInput.focus();
+  }
+
+  function submitEvent(event) {
+    event.preventDefault();
+    const payload = { title: eventTitleInput.value.trim(), event_at: eventDateInput.value, reminder_hours: Number(eventReminderInput.value) };
+    if (!payload.title || !payload.event_at || payload.reminder_hours < 0 || payload.reminder_hours > 168) { eventErrorEl.textContent = t("fillAll"); eventErrorEl.classList.remove("hidden"); return; }
+    apiFetch("/api/events", { method: "POST", body: JSON.stringify(payload) }).then(function () {
+      eventFormEl.classList.add("hidden"); calendarMonth = payload.event_at.slice(0, 7); selectedCalendarDate = payload.event_at.slice(0, 10); return refreshEvents().then(loadAnalytics);
+    }).catch(function (err) { eventErrorEl.textContent = t("eventError") + err.message; eventErrorEl.classList.remove("hidden"); });
+  }
+
+  function refreshEvents() { return fetchCalendarEvents().then(function (items) { calendarEvents = items || []; renderCalendar(); }); }
 
   function emptyMessage() {
     if (currentSection === "completed") return t("noCompleted");
@@ -849,6 +964,7 @@
       element.setAttribute("placeholder", t(element.dataset.i18nPlaceholder));
     });
     languageSelectEl.value = language;
+    addToggleEl.setAttribute("aria-label", currentSection === "calendar" ? t("addEvent") : t("addTaskAria"));
     updateMonthPickerLabel();
     document.querySelectorAll(".remove-reminder-time").forEach(function (button) {
       button.textContent = t("removeReminderTime");
