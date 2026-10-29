@@ -168,6 +168,7 @@ func validateInitData(initData, botToken string) (int64, error) {
 type apiAnalytics struct {
 	CompletedThisWeek  int                  `json:"completed_this_week"`
 	CompletedThisMonth int                  `json:"completed_this_month"`
+	CompletedOnTime    int                  `json:"completed_on_time"`
 	Uncompleted        int                  `json:"uncompleted"`
 	Overdue            int                  `json:"overdue"`
 	WeekStart          string               `json:"week_start"`
@@ -221,6 +222,17 @@ func (b *Bot) handleAnalytics(w http.ResponseWriter, r *http.Request, userID int
 		&result.Uncompleted, &result.Overdue)
 	if err != nil {
 		log.Printf("get analytics: %v", err)
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	if err := b.db.QueryRowContext(r.Context(), `
+		SELECT COUNT(*)
+		FROM homework h
+		JOIN homework_status s ON s.homework_id = h.id
+		WHERE h.chat_id = $1 AND s.is_completed = TRUE AND s.completed_at IS NOT NULL
+		  AND (s.completed_at AT TIME ZONE $2)::date <= (h.deadline AT TIME ZONE $2)::date`,
+		userID, b.config.Timezone.String()).Scan(&result.CompletedOnTime); err != nil {
+		log.Printf("get on-time completion count: %v", err)
 		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}

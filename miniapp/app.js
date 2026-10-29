@@ -10,7 +10,7 @@
       cancel: "Отмена", save: "Сохранить", saveChanges: "Сохранить изменения",
       newTask: "Новое задание", subject: "Предмет", subjectPlaceholder: "Необязательно: например, математика",
       task: "Задание", taskPlaceholder: "Практическая 1", deadline: "Дедлайн",
-      priorityLabel: "Важность", priorityLow: "Низкая", priorityMedium: "Обычная", priorityHigh: "Срочная", noteLabel: "Заметка", notePlaceholder: "Дополнительные детали", priorityFilterAria: "Фильтр по важности", filterAllPriorities: "Любая важность", noteFilterPlaceholder: "Поиск по заметкам",
+      priorityLabel: "Важность", priorityLow: "Низкая", priorityMedium: "Обычная", priorityHigh: "Срочная", noteLabel: "Заметка", notePlaceholder: "Дополнительные детали", priorityFilterAria: "Фильтр по важности", filterAllPriorities: "Любая важность", noteFilterPlaceholder: "Поиск по заметкам", archive: "Архив", noArchive: "Архив пока пуст.", doneOnTime: "Выполнено в срок",
       sectionsAria: "Разделы заданий", uncompleted: "Несделанные", completed: "Сделанные",
       overdue: "Просроченные", analytics: "Аналитика", previousMonth: "Предыдущий месяц",
       nextMonth: "Следующий месяц", analyticsMonth: "Месяц аналитики", doneThisWeek: "Сделано за неделю",
@@ -39,7 +39,7 @@
       cancel: "Cancel", save: "Save", saveChanges: "Save changes",
       newTask: "New task", subject: "Subject (optional)", subjectPlaceholder: "For example, mathematics (optional)",
       task: "Task", taskPlaceholder: "Assignment 1", deadline: "Deadline",
-      priorityLabel: "Priority", priorityLow: "Low", priorityMedium: "Normal", priorityHigh: "Urgent", noteLabel: "Note", notePlaceholder: "Extra details", priorityFilterAria: "Filter by priority", filterAllPriorities: "Any priority", noteFilterPlaceholder: "Search notes",
+      priorityLabel: "Priority", priorityLow: "Low", priorityMedium: "Normal", priorityHigh: "Urgent", noteLabel: "Note", notePlaceholder: "Extra details", priorityFilterAria: "Filter by priority", filterAllPriorities: "Any priority", noteFilterPlaceholder: "Search notes", archive: "Archive", noArchive: "The archive is empty.", doneOnTime: "Completed on time",
       sectionsAria: "Task sections", uncompleted: "To do", completed: "Done",
       overdue: "Overdue", analytics: "Analytics", previousMonth: "Previous month",
       nextMonth: "Next month", analyticsMonth: "Analytics month", doneThisWeek: "Done this week",
@@ -133,6 +133,17 @@
   Object.keys(extraCalendarTranslations).forEach(function (locale) {
     Object.assign(translations[locale], extraCalendarTranslations[locale]);
   });
+  const extraTaskTranslations = {
+    ru: { subject: "Предмет (необязательно)", noFilteredTasks: "По выбранным фильтрам заданий нет." },
+    en: { subject: "Subject (optional)", noFilteredTasks: "No tasks match these filters." },
+    zh: { subject: "课程（可选）", subjectPlaceholder: "例如：数学（可选）", priorityLabel: "优先级", priorityLow: "低", priorityMedium: "普通", priorityHigh: "紧急", noteLabel: "备注", notePlaceholder: "补充信息", priorityFilterAria: "按优先级筛选", filterAllPriorities: "所有优先级", noteFilterPlaceholder: "搜索备注", archive: "归档", noArchive: "归档为空。", doneOnTime: "按时完成", noFilteredTasks: "没有符合筛选条件的任务。" },
+    es: { subject: "Asignatura (opcional)", subjectPlaceholder: "Por ejemplo, matemáticas (opcional)", priorityLabel: "Prioridad", priorityLow: "Baja", priorityMedium: "Normal", priorityHigh: "Urgente", noteLabel: "Nota", notePlaceholder: "Detalles adicionales", priorityFilterAria: "Filtrar por prioridad", filterAllPriorities: "Cualquier prioridad", noteFilterPlaceholder: "Buscar en notas", archive: "Archivo", noArchive: "El archivo está vacío.", doneOnTime: "Completadas a tiempo", noFilteredTasks: "Ninguna tarea coincide con estos filtros." },
+    ar: { subject: "المادة (اختياري)", subjectPlaceholder: "مثال: الرياضيات (اختياري)", priorityLabel: "الأهمية", priorityLow: "منخفضة", priorityMedium: "عادية", priorityHigh: "عاجلة", noteLabel: "ملاحظة", notePlaceholder: "تفاصيل إضافية", priorityFilterAria: "تصفية حسب الأهمية", filterAllPriorities: "أي أهمية", noteFilterPlaceholder: "البحث في الملاحظات", archive: "الأرشيف", noArchive: "الأرشيف فارغ.", doneOnTime: "أُنجزت في الموعد", noFilteredTasks: "لا توجد مهام تطابق عوامل التصفية." },
+    hy: { subject: "Առարկա (ըստ ցանկության)", subjectPlaceholder: "Օրինակ՝ մաթեմատիկա (ըստ ցանկության)", priorityLabel: "Կարևորություն", priorityLow: "Ցածր", priorityMedium: "Սովորական", priorityHigh: "Շտապ", noteLabel: "Նշում", notePlaceholder: "Լրացուցիչ մանրամասներ", priorityFilterAria: "Զտել ըստ կարևորության", filterAllPriorities: "Ցանկացած կարևորություն", noteFilterPlaceholder: "Որոնել նշումներում", archive: "Արխիվ", noArchive: "Արխիվը դատարկ է։", doneOnTime: "Կատարվել է ժամանակին", noFilteredTasks: "Այս զտիչներին համապատասխան առաջադրանքներ չկան։" }
+  };
+  Object.keys(extraTaskTranslations).forEach(function (locale) {
+    Object.assign(translations[locale], extraTaskTranslations[locale]);
+  });
 
   const tg = window.Telegram && window.Telegram.WebApp;
   const initData = tg ? tg.initData : "";
@@ -156,6 +167,7 @@
   const weekRangeEl = document.getElementById("week-range");
   const statCompletedEl = document.getElementById("stat-completed");
   const statMonthCompletedEl = document.getElementById("stat-month-completed");
+  const statOnTimeEl = document.getElementById("stat-on-time");
   const statUncompletedEl = document.getElementById("stat-uncompleted");
   const statOverdueEl = document.getElementById("stat-overdue");
   const monthPickerEl = document.getElementById("month-picker");
@@ -694,7 +706,8 @@
   function refreshEvents() { return fetchCalendarEvents().then(function (items) { calendarEvents = items || []; renderCalendar(); }); }
 
   function emptyMessage() {
-    if (currentSection === "completed") return t("noCompleted");
+    if (priorityFilter.value !== "all" || noteFilter.value.trim()) return t("noFilteredTasks");
+    if (currentSection === "completed") return t("noArchive");
     if (currentSection === "overdue") return t("noOverdue");
     return t("noUncompleted");
   }
@@ -703,6 +716,7 @@
     analyticsData = data;
     statCompletedEl.textContent = data.completed_this_week || 0;
     statMonthCompletedEl.textContent = data.completed_this_month || 0;
+    statOnTimeEl.textContent = data.completed_on_time || 0;
     statUncompletedEl.textContent = data.uncompleted || 0;
     statOverdueEl.textContent = data.overdue || 0;
     weekRangeEl.textContent = t("weekRange", { from: formatDate(data.week_start), to: formatDate(data.week_end) });

@@ -27,7 +27,9 @@ func (r *HomeworkRepository) List(ctx context.Context, userID int64) ([]domain.H
 		FROM homework h
 		LEFT JOIN homework_status s ON s.homework_id = h.id
 		WHERE h.chat_id = $1
-		ORDER BY COALESCE(s.is_completed, FALSE), h.deadline ASC, h.id ASC`, userID)
+		ORDER BY COALESCE(s.is_completed, FALSE),
+			CASE WHEN COALESCE(s.is_completed, FALSE) THEN s.completed_at END DESC NULLS LAST,
+			h.deadline ASC, h.id ASC`, userID)
 	if err != nil {
 		return nil, fmt.Errorf("list homework: %w", err)
 	}
