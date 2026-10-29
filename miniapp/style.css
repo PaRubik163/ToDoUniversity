@@ -138,6 +138,12 @@ body {
   color: var(--ink);
   font: 500 15px "Manrope", sans-serif;
 }
+.add-form textarea {
+  width: 100%; min-height: 76px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 3px;
+  background: var(--surface-raised); color: var(--ink); font: 500 14px/1.45 "Manrope", sans-serif; resize: vertical;
+}
+.add-form textarea:focus-visible { outline: none; border-color: var(--olive); box-shadow: 0 0 0 3px rgba(89, 100, 75, .14); }
+.add-form textarea::placeholder { color: #aaa69a; font-weight: 400; }
 .add-form select:focus-visible { outline: none; border-color: var(--olive); box-shadow: 0 0 0 3px rgba(89, 100, 75, .14); }
 
 .date-picker-control {
@@ -286,6 +292,11 @@ body {
 
 .list { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
 .list.hidden, .analytics.hidden, .calendar-panel.hidden { display: none; }
+.task-filters { display: flex; gap: 8px; margin: 0 0 12px; }
+.task-filters.hidden { display: none; }
+.task-filters select, .task-filters input { min-width: 0; min-height: 40px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); color: var(--ink); font: 500 12px "Manrope", sans-serif; }
+.task-filters select { flex: 0 0 auto; }
+.task-filters input { flex: 1; }
 
 .language-setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .language-label { color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .045em; text-transform: uppercase; }
@@ -411,6 +422,11 @@ body {
 .item-deadline.overdue { color: var(--red); }
 .item-deadline.today, .item-deadline.soon { color: #816a3d; }
 .item-deadline.later { color: var(--green); }
+.item-priority, .item-note { margin: 6px 0 0; font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
+.item-priority { font-weight: 800; }
+.item-priority.priority-low { color: var(--muted); }
+.item-priority.priority-high { color: var(--red); }
+.item-note { color: var(--muted); white-space: pre-wrap; }
 .item-actions { display: flex; flex-shrink: 0; flex-direction: column; gap: 7px; }
 .icon-action {
   width: 34px;

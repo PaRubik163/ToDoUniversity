@@ -21,7 +21,7 @@ func NewHomeworkRepository(db *sql.DB) *HomeworkRepository {
 
 func (r *HomeworkRepository) List(ctx context.Context, userID int64) ([]domain.Homework, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT h.id, h.subject, h.title, h.deadline,
+		SELECT h.id, h.subject, h.title, h.priority, h.note, h.deadline,
 			COALESCE(array_to_json(h.reminder_days)::text, '[]'),
 			COALESCE(s.is_completed, FALSE), s.completed_at
 		FROM homework h
@@ -38,7 +38,7 @@ func (r *HomeworkRepository) List(ctx context.Context, userID int64) ([]domain.H
 		var item domain.Homework
 		var daysJSON string
 		var completedAt sql.NullTime
-		if err := rows.Scan(&item.ID, &item.Subject, &item.Title, &item.Deadline, &daysJSON, &item.Completed, &completedAt); err != nil {
+		if err := rows.Scan(&item.ID, &item.Subject, &item.Title, &item.Priority, &item.Note, &item.Deadline, &daysJSON, &item.Completed, &completedAt); err != nil {
 			return nil, fmt.Errorf("scan homework: %w", err)
 		}
 		if err := json.Unmarshal([]byte(daysJSON), &item.ReminderDays); err != nil {
@@ -60,12 +60,12 @@ func (r *HomeworkRepository) Create(ctx context.Context, userID int64, item doma
 	var id int64
 	err := r.db.QueryRowContext(ctx, `
 		WITH new_homework AS (
-			INSERT INTO homework (chat_id, subject, title, deadline, reminder_days)
-			VALUES ($1, $2, $3, $4, $5::smallint[]) RETURNING id
+			INSERT INTO homework (chat_id, subject, title, priority, note, deadline, reminder_days)
+			VALUES ($1, $2, $3, $4, $5, $6, $7::smallint[]) RETURNING id
 		)
 		INSERT INTO homework_status (homework_id, is_completed)
 		SELECT id, FALSE FROM new_homework RETURNING homework_id`,
-		userID, item.Subject, item.Title, item.Deadline, nullableIntArray(item.ReminderDays)).Scan(&id)
+		userID, item.Subject, item.Title, item.Priority, item.Note, item.Deadline, nullableIntArray(item.ReminderDays)).Scan(&id)
 	if err != nil {
 		return 0, fmt.Errorf("create homework: %w", err)
 	}
@@ -73,9 +73,9 @@ func (r *HomeworkRepository) Create(ctx context.Context, userID int64, item doma
 }
 
 func (r *HomeworkRepository) Update(ctx context.Context, userID, id int64, item domain.Homework) error {
-	result, err := r.db.ExecContext(ctx, `UPDATE homework SET subject = $1, title = $2, deadline = $3,
-		reminder_days = CASE WHEN $4::smallint[] IS NULL THEN reminder_days ELSE $4::smallint[] END
-		WHERE id = $5 AND chat_id = $6`, item.Subject, item.Title, item.Deadline, nullableIntArray(item.ReminderDays), id, userID)
+	result, err := r.db.ExecContext(ctx, `UPDATE homework SET subject = $1, title = $2, priority = $3, note = $4, deadline = $5,
+		reminder_days = CASE WHEN $6::smallint[] IS NULL THEN reminder_days ELSE $6::smallint[] END
+		WHERE id = $7 AND chat_id = $8`, item.Subject, item.Title, item.Priority, item.Note, item.Deadline, nullableIntArray(item.ReminderDays), id, userID)
 	if err != nil {
 		return fmt.Errorf("update homework: %w", err)
 	}

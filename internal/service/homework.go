@@ -17,6 +17,8 @@ var ErrInvalidInput = errors.New("invalid homework input")
 type HomeworkInput struct {
 	Subject      string
 	Title        string
+	Priority     string
+	Note         string
 	Deadline     string
 	ReminderDays []int
 }
@@ -76,9 +78,20 @@ func (s *homeworkService) SetCompleted(ctx context.Context, userID, id int64, co
 
 func (s *homeworkService) validated(input HomeworkInput) (domain.Homework, error) {
 	input.Subject, input.Title = strings.TrimSpace(input.Subject), strings.TrimSpace(input.Title)
-	if input.Subject == "" || input.Title == "" || input.Deadline == "" {
-		return domain.Homework{}, fmt.Errorf("%w: subject, title and deadline are required", ErrInvalidInput)
+	if input.Title == "" || input.Deadline == "" {
+		return domain.Homework{}, fmt.Errorf("%w: title and deadline are required", ErrInvalidInput)
 	}
+	if len(input.Subject) > 200 || len(input.Title) > 300 || len(input.Note) > 2000 {
+		return domain.Homework{}, fmt.Errorf("%w: subject/title/note is too long", ErrInvalidInput)
+	}
+	input.Priority = strings.TrimSpace(input.Priority)
+	if input.Priority == "" {
+		input.Priority = "medium"
+	}
+	if input.Priority != "low" && input.Priority != "medium" && input.Priority != "high" {
+		return domain.Homework{}, fmt.Errorf("%w: priority must be low, medium or high", ErrInvalidInput)
+	}
+	input.Note = strings.TrimSpace(input.Note)
 	if len(input.ReminderDays) > 0 && (len(input.ReminderDays) != 1 || input.ReminderDays[0] < 1 || input.ReminderDays[0] > 20) {
 		return domain.Homework{}, fmt.Errorf("%w: reminder_days must contain one value from 1 to 20", ErrInvalidInput)
 	}
@@ -86,5 +99,5 @@ func (s *homeworkService) validated(input HomeworkInput) (domain.Homework, error
 	if err != nil || deadline.Format("2006-01-02") != input.Deadline {
 		return domain.Homework{}, fmt.Errorf("%w: deadline must use YYYY-MM-DD format", ErrInvalidInput)
 	}
-	return domain.Homework{Subject: input.Subject, Title: input.Title, Deadline: deadline, ReminderDays: input.ReminderDays}, nil
+	return domain.Homework{Subject: input.Subject, Title: input.Title, Priority: input.Priority, Note: input.Note, Deadline: deadline, ReminderDays: input.ReminderDays}, nil
 }

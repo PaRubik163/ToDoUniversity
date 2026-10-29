@@ -8,8 +8,9 @@
       reminderTimesLabel: "Время напоминаний каждый день", addReminderTime: "Добавить время", removeReminderTime: "Удалить время", languageLabel: "Язык",
       designLabel: "Оформление", designClassic: "Обычное", designNeon: "Неоновое",
       cancel: "Отмена", save: "Сохранить", saveChanges: "Сохранить изменения",
-      newTask: "Новое задание", subject: "Предмет", subjectPlaceholder: "Разработка безопасного ПО",
+      newTask: "Новое задание", subject: "Предмет", subjectPlaceholder: "Необязательно: например, математика",
       task: "Задание", taskPlaceholder: "Практическая 1", deadline: "Дедлайн",
+      priorityLabel: "Важность", priorityLow: "Низкая", priorityMedium: "Обычная", priorityHigh: "Срочная", noteLabel: "Заметка", notePlaceholder: "Дополнительные детали", priorityFilterAria: "Фильтр по важности", filterAllPriorities: "Любая важность", noteFilterPlaceholder: "Поиск по заметкам",
       sectionsAria: "Разделы заданий", uncompleted: "Несделанные", completed: "Сделанные",
       overdue: "Просроченные", analytics: "Аналитика", previousMonth: "Предыдущий месяц",
       nextMonth: "Следующий месяц", analyticsMonth: "Месяц аналитики", doneThisWeek: "Сделано за неделю",
@@ -36,8 +37,9 @@
       reminderTimesLabel: "Reminder times each day", addReminderTime: "Add time", removeReminderTime: "Remove time", languageLabel: "Language",
       designLabel: "Appearance", designClassic: "Default", designNeon: "Neon",
       cancel: "Cancel", save: "Save", saveChanges: "Save changes",
-      newTask: "New task", subject: "Subject", subjectPlaceholder: "Secure Software Development",
+      newTask: "New task", subject: "Subject (optional)", subjectPlaceholder: "For example, mathematics (optional)",
       task: "Task", taskPlaceholder: "Assignment 1", deadline: "Deadline",
+      priorityLabel: "Priority", priorityLow: "Low", priorityMedium: "Normal", priorityHigh: "Urgent", noteLabel: "Note", notePlaceholder: "Extra details", priorityFilterAria: "Filter by priority", filterAllPriorities: "Any priority", noteFilterPlaceholder: "Search notes",
       sectionsAria: "Task sections", uncompleted: "To do", completed: "Done",
       overdue: "Overdue", analytics: "Analytics", previousMonth: "Previous month",
       nextMonth: "Next month", analyticsMonth: "Analytics month", doneThisWeek: "Done this week",
@@ -171,6 +173,10 @@
   const cancelAddEl = document.getElementById("cancel-add");
   const subjectInput = document.getElementById("field-subject");
   const titleInput = document.getElementById("field-title");
+  const priorityInput = document.getElementById("field-priority");
+  const noteInput = document.getElementById("field-note");
+  const priorityFilter = document.getElementById("priority-filter");
+  const noteFilter = document.getElementById("note-filter");
   const deadlineInput = document.getElementById("field-deadline");
   const deadlineDisplayEl = document.getElementById("deadline-display");
   const taskReminderDaysInput = document.getElementById("task-reminder-days");
@@ -255,6 +261,8 @@
   });
   taskReminderDaysInput.addEventListener("input", updateTaskReminderDisplay);
   deadlineInput.addEventListener("change", updateDeadlineDisplay);
+  priorityFilter.addEventListener("change", renderCurrentSection);
+  noteFilter.addEventListener("input", renderCurrentSection);
 
   addToggleEl.addEventListener("click", function () {
     if (currentSection === "calendar") { openEventForm(); return; }
@@ -278,10 +286,12 @@
     const payload = {
       subject: subjectInput.value.trim(),
       title: titleInput.value.trim(),
+      priority: priorityInput.value,
+      note: noteInput.value.trim(),
       deadline: deadlineInput.value,
       reminder_days: [Number(taskReminderDaysInput.value)],
     };
-    if (!payload.subject || !payload.title || !payload.deadline || !payload.reminder_days.length) {
+    if (!payload.title || !payload.deadline || !payload.reminder_days.length) {
       showFormError(t("fillAll"));
       return;
     }
@@ -341,6 +351,8 @@
     hideFormError();
     subjectInput.value = item.subject;
     titleInput.value = item.title;
+    priorityInput.value = item.priority || "medium";
+    noteInput.value = item.note || "";
     deadlineInput.value = item.deadline;
     updateDeadlineDisplay();
     setTaskReminderDays(item.reminder_days && item.reminder_days.length ? item.reminder_days[0] : 7);
@@ -571,15 +583,18 @@
     analyticsEl.classList.toggle("hidden", !analyticsMode);
     calendarEl.classList.toggle("hidden", !calendarMode);
     listEl.classList.toggle("hidden", analyticsMode || calendarMode);
+    document.getElementById("task-filters").classList.toggle("hidden", analyticsMode || calendarMode);
     if (analyticsMode) {
       emptyEl.classList.add("hidden");
       return;
     }
     if (calendarMode) { emptyEl.classList.add("hidden"); renderCalendar(); return; }
     const items = homeworkItems.filter(function (item) {
-      if (currentSection === "completed") return item.completed;
-      if (currentSection === "overdue") return !item.completed && item.days_left < 0;
-      return !item.completed;
+      if (currentSection === "completed" && !item.completed) return false;
+      if (currentSection === "overdue" && (item.completed || item.days_left >= 0)) return false;
+      if (currentSection === "uncompleted" && item.completed) return false;
+      if (priorityFilter.value !== "all" && item.priority !== priorityFilter.value) return false;
+      return !noteFilter.value.trim() || (item.note || "").toLocaleLowerCase().includes(noteFilter.value.trim().toLocaleLowerCase());
     });
     renderList(items);
   }
@@ -840,9 +855,11 @@
     deadline.className = "item-deadline " + (item.completed ? "completed" : deadlineClass(item.days_left));
     deadline.textContent = item.completed ? formatDate(item.deadline) : formatDeadline(item.deadline, item.days_left);
 
-    body.appendChild(subject);
+    if (item.subject) body.appendChild(subject);
     body.appendChild(title);
     body.appendChild(deadline);
+    const priority = document.createElement("p"); priority.className = "item-priority priority-" + (item.priority || "medium"); priority.textContent = t("priority" + (item.priority || "medium").charAt(0).toUpperCase() + (item.priority || "medium").slice(1)); body.appendChild(priority);
+    if (item.note) { const note = document.createElement("p"); note.className = "item-note"; note.textContent = item.note; body.appendChild(note); }
 
     if (item.completed) {
       const completedDate = document.createElement("p");

@@ -60,7 +60,7 @@
     <p id="form-title" class="form-title" data-i18n="newTask">Новое задание</p>
     <label>
       <span data-i18n="subject">Предмет</span>
-      <input id="field-subject" type="text" placeholder="Разработка безопасного ПО" data-i18n-placeholder="subjectPlaceholder" required maxlength="200">
+      <input id="field-subject" type="text" placeholder="Разработка ПО (необязательно)" data-i18n-placeholder="subjectPlaceholder" maxlength="200">
     </label>
     <label>
       <span data-i18n="task">Задание</span>
@@ -74,6 +74,8 @@
         <input id="field-deadline" type="date" aria-label="Дедлайн" data-i18n-aria="deadline" required>
       </span>
     </label>
+    <label><span data-i18n="priorityLabel">Важность</span><select id="field-priority"><option value="low" data-i18n="priorityLow">Низкая</option><option value="medium" selected data-i18n="priorityMedium">Обычная</option><option value="high" data-i18n="priorityHigh">Срочная</option></select></label>
+    <label><span data-i18n="noteLabel">Заметка</span><textarea id="field-note" maxlength="2000" rows="3" data-i18n-placeholder="notePlaceholder" placeholder="Дополнительные детали"></textarea></label>
     <fieldset class="reminder-setting task-reminder-setting">
       <legend data-i18n="reminderDaysLabel">Напомнить за</legend>
       <div class="task-reminder-control">
@@ -107,6 +109,10 @@
     <button class="section-button" type="button" data-section="calendar" data-i18n="calendar">Постоянные</button>
   </nav>
 
+  <div id="task-filters" class="task-filters">
+    <select id="priority-filter" aria-label="Фильтр по важности" data-i18n-aria="priorityFilterAria"><option value="all" data-i18n="filterAllPriorities">Любая важность</option><option value="low" data-i18n="priorityLow">Низкая</option><option value="medium" data-i18n="priorityMedium">Обычная</option><option value="high" data-i18n="priorityHigh">Срочная</option></select>
+    <input id="note-filter" type="search" placeholder="Поиск по заметкам" data-i18n-placeholder="noteFilterPlaceholder">
+  </div>
   <section id="calendar" class="calendar-panel hidden" aria-label="Календарь">
     <div class="month-filter"><button id="calendar-prev" class="month-arrow" type="button" aria-label="Предыдущий месяц">&#8249;</button><strong id="calendar-month" class="calendar-month"></strong><button id="calendar-next" class="month-arrow" type="button" aria-label="Следующий месяц">&#8250;</button></div>
     <div id="calendar-grid" class="calendar-grid"></div>

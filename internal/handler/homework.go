@@ -27,6 +27,8 @@ func NewHomeworkHandler(homeworkService service.HomeworkService, timezone *time.
 type homeworkRequest struct {
 	Subject      string `json:"subject"`
 	Title        string `json:"title"`
+	Priority     string `json:"priority"`
+	Note         string `json:"note"`
 	Deadline     string `json:"deadline"`
 	ReminderDays []int  `json:"reminder_days"`
 }
@@ -35,6 +37,8 @@ type homeworkResponse struct {
 	ID           int64  `json:"id"`
 	Subject      string `json:"subject"`
 	Title        string `json:"title"`
+	Priority     string `json:"priority"`
+	Note         string `json:"note"`
 	Deadline     string `json:"deadline"`
 	ReminderDays []int  `json:"reminder_days"`
 	DaysLeft     int    `json:"days_left"`
@@ -130,7 +134,7 @@ func (h *HomeworkHandler) present(item domain.Homework) homeworkResponse {
 	now := time.Now().In(h.timezone)
 	deadline := item.Deadline.In(h.timezone)
 	response := homeworkResponse{
-		ID: item.ID, Subject: item.Subject, Title: item.Title,
+		ID: item.ID, Subject: item.Subject, Title: item.Title, Priority: item.Priority, Note: item.Note,
 		Deadline: deadline.Format("2006-01-02"), ReminderDays: item.ReminderDays,
 		DaysLeft: domain.CalendarDays(now, deadline, h.timezone), Completed: item.Completed,
 	}
@@ -157,7 +161,7 @@ func (h *HomeworkHandler) internalError(w http.ResponseWriter, operation string,
 }
 
 func toInput(req homeworkRequest) service.HomeworkInput {
-	return service.HomeworkInput{Subject: req.Subject, Title: req.Title, Deadline: req.Deadline, ReminderDays: req.ReminderDays}
+	return service.HomeworkInput{Subject: req.Subject, Title: req.Title, Priority: req.Priority, Note: req.Note, Deadline: req.Deadline, ReminderDays: req.ReminderDays}
 }
 
 func writeJSON(w http.ResponseWriter, value any) {

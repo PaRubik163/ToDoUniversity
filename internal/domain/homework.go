@@ -9,6 +9,8 @@ type Homework struct {
 	ID           int64
 	Subject      string
 	Title        string
+	Priority     string
+	Note         string
 	Deadline     time.Time
 	ReminderDays []int
 	Completed    bool
