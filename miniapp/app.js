@@ -1,8 +1,6 @@
 (function () {
   "use strict";
 
-  try { localStorage.removeItem("access_token"); localStorage.removeItem("telegram_linked"); } catch (_) {}
-
   const translations = {
     ru: {
       appTitle: "Задания", settingsAria: "Настройки", addTaskAria: "Добавить задание",
@@ -152,8 +150,8 @@
   const webLink = document.getElementById("web-link");
   const webLogout = document.getElementById("web-logout");
   function configureWebActions() {
-    if (!sessionStorage.getItem("access_token")) return;
-    if (webLink && sessionStorage.getItem("telegram_linked") !== "true") {
+    if (!localStorage.getItem("access_token")) return;
+    if (webLink && localStorage.getItem("telegram_linked") !== "true") {
       webLink.classList.remove("hidden");
       if (!webLink.dataset.bound) {
         webLink.dataset.bound = "true";
@@ -168,7 +166,7 @@
         webLogout.dataset.bound = "true";
         webLogout.addEventListener("click", function () {
           fetch("/api/auth/logout", {method:"POST", credentials:"same-origin"}).finally(function () {
-            sessionStorage.removeItem("access_token"); sessionStorage.removeItem("telegram_linked"); location.href="/";
+            localStorage.removeItem("access_token"); localStorage.removeItem("telegram_linked"); location.href="/";
           });
         });
       }
@@ -282,19 +280,17 @@
     if (!response.ok) throw new Error("no web session");
     return response.json();
   }).then(function (tokens) {
-    sessionStorage.setItem("access_token", tokens.access_token);
-    sessionStorage.setItem("telegram_linked", String(tokens.telegram_linked));
+    localStorage.setItem("access_token", tokens.access_token);
+    localStorage.setItem("telegram_linked", String(tokens.telegram_linked));
     configureWebActions();
     loadHomework();
   }).catch(function () {
-    if (initData) {
-      sessionStorage.removeItem("access_token");
-      sessionStorage.removeItem("telegram_linked");
+    if (localStorage.getItem("access_token")) {
+      configureWebActions();
       loadHomework();
       return;
     }
-    if (sessionStorage.getItem("access_token")) {
-      configureWebActions();
+    if (initData) {
       loadHomework();
       return;
     }
@@ -1040,12 +1036,12 @@
         if (!response.ok) throw new Error("Сессия завершена. Войдите снова.");
         return response.json();
       }).then(function (renewed) {
-        sessionStorage.setItem("access_token", renewed.access_token);
-        sessionStorage.setItem("telegram_linked", String(renewed.telegram_linked));
+        localStorage.setItem("access_token", renewed.access_token);
+        localStorage.setItem("telegram_linked", String(renewed.telegram_linked));
         configureWebActions();
         return renewed.access_token;
       }).catch(function (err) {
-        sessionStorage.removeItem("access_token"); sessionStorage.removeItem("telegram_linked"); location.href="/"; throw err;
+        localStorage.removeItem("access_token"); localStorage.removeItem("telegram_linked"); throw err;
       }).finally(function () { refreshInFlight = null; });
     }
     return refreshInFlight;
@@ -1054,7 +1050,7 @@
   function apiFetch(path, options) {
     options = options || {};
     options.headers = Object.assign({}, options.headers, {"Content-Type": "application/json"});
-    const webToken = sessionStorage.getItem("access_token");
+    const webToken = localStorage.getItem("access_token");
     if (webToken) options.headers.Authorization = "Bearer " + webToken;
     else options.headers["X-Telegram-Init-Data"] = initData;
     return fetch(path, options).then(function (resp) {
@@ -1062,6 +1058,14 @@
         return renewWebSession().then(function (accessToken) {
           options.headers.Authorization = "Bearer " + accessToken;
           return fetch(path, options);
+        }).catch(function (err) {
+          if (initData) {
+            delete options.headers.Authorization;
+            options.headers["X-Telegram-Init-Data"] = initData;
+            return fetch(path, options);
+          }
+          location.href = "/";
+          throw err;
         });
       }
       return resp;

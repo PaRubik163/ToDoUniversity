@@ -98,7 +98,7 @@ func (h *authHandler) refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Cache-Control", "no-store")
-	http.SetCookie(w, &http.Cookie{Name: "refresh_token", Value: p.RefreshToken, Path: "/api/auth", HttpOnly: true, Secure: r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https", SameSite: http.SameSiteStrictMode, MaxAge: 30 * 24 * 3600})
+	setRefreshCookie(w, r, p.RefreshToken, 30*24*3600)
 	p.RefreshToken = ""
 	writeJSON(w, p)
 }
@@ -114,7 +114,7 @@ func (h *authHandler) logout(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	http.SetCookie(w, &http.Cookie{Name: "refresh_token", Value: "", Path: "/api/auth", HttpOnly: true, Secure: r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https", SameSite: http.SameSiteStrictMode, MaxAge: -1})
+	setRefreshCookie(w, r, "", -1)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -152,7 +152,21 @@ func (h *authHandler) linkCode(w http.ResponseWriter, r *http.Request) {
 
 func (h *authHandler) respond(w http.ResponseWriter, r *http.Request, p service.TokenPair) {
 	w.Header().Set("Cache-Control", "no-store")
-	http.SetCookie(w, &http.Cookie{Name: "refresh_token", Value: p.RefreshToken, Path: "/api/auth", HttpOnly: true, Secure: r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https", SameSite: http.SameSiteStrictMode, MaxAge: 30 * 24 * 3600})
+	setRefreshCookie(w, r, p.RefreshToken, 30*24*3600)
 	p.RefreshToken = ""
 	writeJSON(w, p)
+}
+
+func setRefreshCookie(w http.ResponseWriter, r *http.Request, value string, maxAge int) {
+	secure := r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
+	sameSite := http.SameSiteLaxMode
+	if secure {
+		// The Mini App runs in a Telegram WebView, which treats the site as a
+		// third-party context. Strict cookies are omitted from refresh requests.
+		sameSite = http.SameSiteNoneMode
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name: "refresh_token", Value: value, Path: "/api/auth", HttpOnly: true,
+		Secure: secure, SameSite: sameSite, MaxAge: maxAge,
+	})
 }
