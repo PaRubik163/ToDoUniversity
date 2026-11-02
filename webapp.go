@@ -64,6 +64,7 @@ func (b *Bot) startWebServer(ctx context.Context, addr string) error {
 	mux.HandleFunc("/api/auth/login", authHandler.login)
 	mux.HandleFunc("/api/auth/refresh", authHandler.refresh)
 	mux.HandleFunc("/api/auth/logout", authHandler.logout)
+	mux.HandleFunc("/api/auth/link-code", authHandler.linkCode)
 	homeworkRepository := postgres.NewHomeworkRepository(b.db)
 	homeworkService := service.NewHomeworkService(homeworkRepository, b.config.Timezone)
 	homeworkHandler := handler.NewHomeworkHandler(homeworkService, b.config.Timezone)
@@ -107,7 +108,7 @@ func logRequests(next http.Handler) http.Handler {
 func (b *Bot) withAuth(next func(w http.ResponseWriter, r *http.Request, userID int64), users *service.UserService, auth *service.AuthService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if header := r.Header.Get("Authorization"); strings.HasPrefix(header, "Bearer ") {
-			userID, err := auth.ValidateAccess(strings.TrimPrefix(header, "Bearer "))
+			userID, err := auth.ValidateAccess(r.Context(), strings.TrimPrefix(header, "Bearer "))
 			if err != nil {
 				http.Error(w, "invalid access token", http.StatusUnauthorized)
 				return

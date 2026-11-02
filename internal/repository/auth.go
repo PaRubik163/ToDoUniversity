@@ -16,4 +16,7 @@ type AuthRepository interface {
 	SaveRefresh(context.Context, []byte, int64, time.Time) error
 	RotateRefresh(context.Context, []byte, []byte, time.Time) (int64, error)
 	RevokeRefresh(context.Context, []byte) error
+	CreateLinkCode(context.Context, []byte, int64, time.Time) error
+	LinkTelegramAccount(context.Context, []byte, int64) error
+	AccountExists(context.Context, int64) (bool, error)
 }

@@ -19,6 +19,8 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"homework-reminder-bot/internal/config"
 	"homework-reminder-bot/internal/domain"
+	"homework-reminder-bot/internal/repository/postgres"
+	"homework-reminder-bot/internal/service"
 )
 
 const pollTimeout = 25 * time.Second
@@ -42,9 +44,11 @@ type Update struct {
 type Message struct {
 	MessageID int64 `json:"message_id"`
 	Chat      struct {
-		ID int64 `json:"id"`
+		ID   int64  `json:"id"`
+		Type string `json:"type"`
 	} `json:"chat"`
 	From struct {
+		ID           int64  `json:"id"`
 		LanguageCode string `json:"language_code"`
 	} `json:"from"`
 	Text string `json:"text"`
@@ -237,6 +241,16 @@ func (b *Bot) handleMessage(ctx context.Context, msg *Message) error {
 			log.Printf("send web app button: %v", err)
 		}
 		return b.sendMessage(ctx, msg.Chat.ID, helpText)
+	case strings.HasPrefix(text, "/link"):
+		parts := strings.Fields(text)
+		if msg.Chat.Type != "private" || msg.From.ID <= 0 || len(parts) != 2 {
+			return b.sendMessage(ctx, msg.Chat.ID, "Для привязки отправьте боту в личном чате: /link КОД")
+		}
+		linker := service.NewAuthService(postgres.NewAuthRepository(b.db), b.config.JWTSecret)
+		if err := linker.LinkTelegramAccount(ctx, parts[1], msg.From.ID); err != nil {
+			return b.sendMessage(ctx, msg.Chat.ID, "Код привязки недействителен или истёк. Создайте новый на сайте.")
+		}
+		return b.sendMessage(ctx, msg.Chat.ID, "Аккаунты связаны. Обновите страницу сайта — там появятся ваши прежние задачи Telegram.")
 	case text == "/list" || text == "Список":
 		return b.sendHomeworkList(ctx, msg.Chat.ID)
 	case strings.HasPrefix(text, "/delete") || strings.HasPrefix(text, "Удалить"):

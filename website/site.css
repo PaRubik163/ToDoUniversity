@@ -12,5 +12,4 @@
 #auth-form input:focus-visible { outline: none; border-color: var(--olive); box-shadow: 0 0 0 3px rgba(89, 100, 75, .14); }
 .auth-submit { width: 100%; min-height: 44px; margin-top: 2px; }
 .auth-note { margin: 22px auto; color: var(--muted); font-size: 12px; text-align: center; }
-.tasks-link { white-space: nowrap; text-decoration: none; }
-@media (max-width: 520px) { .auth-app { padding: 20px 16px 40px; } .auth-card { margin-top: 35px; } .header { gap: 10px; } .header h1 { font-size: 31px; } .tasks-link { padding: 9px 11px; font-size: 12px; } }
+@media (max-width: 520px) { .auth-app { padding: 20px 16px 40px; } .auth-card { margin-top: 35px; } .header { gap: 10px; } .header h1 { font-size: 31px; } }

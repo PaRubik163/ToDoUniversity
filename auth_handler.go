@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"homework-reminder-bot/internal/service"
 )
@@ -85,6 +86,32 @@ func (h *authHandler) logout(w http.ResponseWriter, r *http.Request) {
 	}
 	http.SetCookie(w, &http.Cookie{Name: "refresh_token", Value: "", Path: "/api/auth", HttpOnly: true, Secure: r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https", SameSite: http.SameSiteStrictMode, MaxAge: -1})
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *authHandler) linkCode(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	header := r.Header.Get("Authorization")
+	if !strings.HasPrefix(header, "Bearer ") {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	accountID, err := h.auth.ValidateAccess(r.Context(), strings.TrimPrefix(header, "Bearer "))
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	code, err := h.auth.IssueLinkCode(r.Context(), accountID)
+	if err != nil {
+		http.Error(w, "could not create link code", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, struct {
+		Code      string `json:"code"`
+		ExpiresIn int    `json:"expires_in"`
+	}{Code: code, ExpiresIn: 600})
 }
 
 func (h *authHandler) respond(w http.ResponseWriter, r *http.Request, p service.TokenPair) {

@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -20,10 +21,11 @@ var ErrCredentials = errors.New("invalid email or password")
 var ErrRefresh = errors.New("invalid refresh token")
 
 type TokenPair struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	TokenType    string `json:"token_type"`
-	ExpiresIn    int64  `json:"expires_in"`
+	AccessToken    string `json:"access_token"`
+	RefreshToken   string `json:"refresh_token"`
+	TokenType      string `json:"token_type"`
+	ExpiresIn      int64  `json:"expires_in"`
+	TelegramLinked bool   `json:"telegram_linked"`
 }
 type AuthService struct {
 	repo   repository.AuthRepository
@@ -73,13 +75,35 @@ func (s *AuthService) Refresh(ctx context.Context, token string) (TokenPair, err
 	if err != nil {
 		return TokenPair{}, err
 	}
-	return TokenPair{access, next, "Bearer", 900}, nil
+	return TokenPair{AccessToken: access, RefreshToken: next, TokenType: "Bearer", ExpiresIn: 900, TelegramLinked: id > 0}, nil
 }
 func (s *AuthService) Logout(ctx context.Context, token string) error {
 	if token == "" {
 		return nil
 	}
 	return s.repo.RevokeRefresh(ctx, tokenHash(token))
+}
+
+func (s *AuthService) IssueLinkCode(ctx context.Context, accountID int64) (string, error) {
+	if accountID > 0 {
+		return "", errors.New("Telegram account is already linked")
+	}
+	raw := make([]byte, 5)
+	if _, err := rand.Read(raw); err != nil {
+		return "", err
+	}
+	code := strings.ToUpper(hex.EncodeToString(raw))
+	if err := s.repo.CreateLinkCode(ctx, tokenHash(code), accountID, s.now().Add(10*time.Minute)); err != nil {
+		return "", err
+	}
+	return code, nil
+}
+
+func (s *AuthService) LinkTelegramAccount(ctx context.Context, code string, telegramID int64) error {
+	if telegramID <= 0 {
+		return errors.New("invalid Telegram user")
+	}
+	return s.repo.LinkTelegramAccount(ctx, tokenHash(strings.ToUpper(strings.TrimSpace(code))), telegramID)
 }
 func (s *AuthService) issue(ctx context.Context, id int64) (TokenPair, error) {
 	refresh, err := randomToken()
@@ -90,7 +114,7 @@ func (s *AuthService) issue(ctx context.Context, id int64) (TokenPair, error) {
 		return TokenPair{}, err
 	}
 	access, err := s.access(id)
-	return TokenPair{access, refresh, "Bearer", 900}, err
+	return TokenPair{AccessToken: access, RefreshToken: refresh, TokenType: "Bearer", ExpiresIn: 900, TelegramLinked: id > 0}, err
 }
 func (s *AuthService) access(id int64) (string, error) {
 	enc := base64.RawURLEncoding
@@ -104,7 +128,7 @@ func (s *AuthService) access(id int64) (string, error) {
 	mac.Write([]byte(body))
 	return body + "." + enc.EncodeToString(mac.Sum(nil)), nil
 }
-func (s *AuthService) ValidateAccess(token string) (int64, error) {
+func (s *AuthService) ValidateAccess(ctx context.Context, token string) (int64, error) {
 	parts := strings.Split(token, ".")
 	if len(parts) != 3 {
 		return 0, ErrCredentials
@@ -128,7 +152,11 @@ func (s *AuthService) ValidateAccess(token string) (int64, error) {
 		return 0, ErrCredentials
 	}
 	var id int64
-	if _, err = fmt.Sscan(claims.Sub, &id); err != nil || id >= 0 {
+	if _, err = fmt.Sscan(claims.Sub, &id); err != nil || id == 0 {
+		return 0, ErrCredentials
+	}
+	exists, err := s.repo.AccountExists(ctx, id)
+	if err != nil || !exists {
 		return 0, ErrCredentials
 	}
 	return id, nil
