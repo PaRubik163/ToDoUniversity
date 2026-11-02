@@ -1,22 +1,18 @@
-package main
+package app
 
 import (
 	"context"
 	"database/sql"
-	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/fs"
 	"log"
 	"net/http"
 	"net/url"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
 	"homework-reminder-bot/internal/config"
 	"homework-reminder-bot/internal/domain"
 	"homework-reminder-bot/internal/repository/postgres"
@@ -56,32 +52,18 @@ type Message struct {
 
 type homework = domain.Homework
 
-func main() {
-	ctx := context.Background()
-	appConfig, err := config.Load()
-	if err != nil {
-		log.Fatalf("load configuration: %v", err)
-	}
-
-	db, err := sql.Open("pgx", appConfig.DatabaseURL)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
-	if err := db.PingContext(ctx); err != nil {
-		log.Fatalf("postgres is unavailable: %v", err)
-	}
-	if err := migrate(ctx, db); err != nil {
-		log.Fatal(err)
-	}
-
-	b := &Bot{
+// New constructs the Telegram bot and its HTTP application services.
+func New(appConfig config.Config, db *sql.DB) *Bot {
+	return &Bot{
 		config: appConfig,
 		db:     db,
 		client: &http.Client{Timeout: pollTimeout + 10*time.Second},
 	}
+}
 
-	if appConfig.MiniAppURL != "" {
+// Run starts background reminders, the Mini App server, and Telegram polling.
+func (b *Bot) Run(ctx context.Context) error {
+	if b.config.MiniAppURL != "" {
 		if err := b.setMenuButton(ctx); err != nil {
 			log.Printf("set menu button: %v", err)
 		}
@@ -90,93 +72,46 @@ func main() {
 	}
 
 	go b.reminderLoop(ctx)
-	go func() {
-		if err := b.startWebServer(ctx, ":"+appConfig.Port); err != nil {
-			log.Fatalf("web server: %v", err)
-		}
-	}()
+	serverErrors := make(chan error, 1)
+	go func() { serverErrors <- b.startWebServer(ctx, ":"+b.config.Port) }()
+
+	pollErrors := make(chan error, 1)
+	go func() { pollErrors <- b.poll(ctx) }()
 
 	log.Println("bot is running")
-	if err := b.poll(ctx); err != nil {
-		log.Fatal(err)
-	}
-}
-
-//go:embed migrations/*.sql
-var migrationFiles embed.FS
-
-// migrate applies each new SQL file exactly once. Add future schema changes as
-// migrations/002_description.sql, migrations/003_description.sql, and so on.
-func migrate(ctx context.Context, db *sql.DB) error {
-	if _, err := db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS schema_migrations (
-		version INTEGER PRIMARY KEY,
-		applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
-	)`); err != nil {
-		return fmt.Errorf("create migration registry: %w", err)
-	}
-
-	entries, err := fs.ReadDir(migrationFiles, "migrations")
-	if err != nil {
-		return fmt.Errorf("read migrations: %w", err)
-	}
-	sort.Slice(entries, func(i, j int) bool { return entries[i].Name() < entries[j].Name() })
-	seen := make(map[int]bool)
-
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".sql") {
-			continue
+	select {
+	case <-ctx.Done():
+		return nil
+	case err := <-serverErrors:
+		if ctx.Err() != nil || err == nil {
+			return nil
 		}
-		prefix, _, ok := strings.Cut(entry.Name(), "_")
-		if !ok {
-			return fmt.Errorf("migration %q must start with a numeric version and underscore", entry.Name())
+		return fmt.Errorf("web server: %w", err)
+	case err := <-pollErrors:
+		if ctx.Err() != nil || err == nil {
+			return nil
 		}
-		version, err := strconv.Atoi(prefix)
-		if err != nil || version < 1 || seen[version] {
-			return fmt.Errorf("invalid or duplicate migration version in %q", entry.Name())
-		}
-		seen[version] = true
-
-		sqlBytes, err := migrationFiles.ReadFile("migrations/" + entry.Name())
-		if err != nil {
-			return fmt.Errorf("read migration %q: %w", entry.Name(), err)
-		}
-		if err := applyMigration(ctx, db, version, string(sqlBytes)); err != nil {
-			return fmt.Errorf("apply migration %q: %w", entry.Name(), err)
-		}
+		return fmt.Errorf("telegram polling: %w", err)
 	}
-	return nil
-}
-
-func applyMigration(ctx context.Context, db *sql.DB, version int, sqlText string) error {
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	var applied bool
-	if err := tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version = $1)", version).Scan(&applied); err != nil {
-		return err
-	}
-	if applied {
-		return tx.Commit()
-	}
-	if _, err := tx.ExecContext(ctx, sqlText); err != nil {
-		return err
-	}
-	if _, err := tx.ExecContext(ctx, "INSERT INTO schema_migrations (version) VALUES ($1)", version); err != nil {
-		return err
-	}
-	return tx.Commit()
 }
 
 func (b *Bot) poll(ctx context.Context) error {
 	var offset int64
 	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		updates, err := b.getUpdates(ctx, offset)
 		if err != nil {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
 			log.Printf("getUpdates: %v", err)
-			time.Sleep(3 * time.Second)
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(3 * time.Second):
+			}
 			continue
 		}
 		for _, update := range updates {

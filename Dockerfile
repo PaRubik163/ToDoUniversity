@@ -8,7 +8,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 COPY . .
 RUN --mount=type=cache,target=/root/.cache/go-build \
     GOMAXPROCS=1 GOGC=50 GOMEMLIMIT=600MiB CGO_ENABLED=0 \
-    go build -p 1 -trimpath -buildvcs=false -ldflags="-s -w" -o /out/todo-bot .
+    go build -p 1 -trimpath -buildvcs=false -ldflags="-s -w" -o /out/todo-bot ./cmd/bot
 
 FROM alpine:3.20
 RUN apk add --no-cache ca-certificates tzdata \

@@ -1,11 +1,10 @@
-package main
+package app
 
 import (
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"database/sql"
-	"embed"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -22,10 +21,8 @@ import (
 	"homework-reminder-bot/internal/handler"
 	"homework-reminder-bot/internal/repository/postgres"
 	"homework-reminder-bot/internal/service"
+	webassets "homework-reminder-bot/internal/web/assets"
 )
-
-//go:embed miniapp/* website/*
-var miniAppFiles embed.FS
 
 type telegramUser struct {
 	ID           int64  `json:"id"`
@@ -35,14 +32,14 @@ type telegramUser struct {
 // startWebServer serves the Mini App static files and its JSON API. It blocks
 // until the context is cancelled or the server fails to start.
 func (b *Bot) startWebServer(ctx context.Context, addr string) error {
-	sub, err := fs.Sub(miniAppFiles, "miniapp")
+	sub, err := fs.Sub(webassets.Files, "miniapp")
 	if err != nil {
 		return fmt.Errorf("mount miniapp assets: %w", err)
 	}
 
 	mux := http.NewServeMux()
 	assets := http.FileServer(http.FS(sub))
-	website, err := fs.Sub(miniAppFiles, "website")
+	website, err := fs.Sub(webassets.Files, "website")
 	if err != nil {
 		return fmt.Errorf("mount website assets: %w", err)
 	}

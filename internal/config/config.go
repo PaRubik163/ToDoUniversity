@@ -3,32 +3,38 @@ package config
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/kelseyhightower/envconfig"
 )
 
 // Config contains the settings required to run the bot and its HTTP API.
 type Config struct {
-	TelegramBotToken string
-	DatabaseURL      string
-	Timezone         *time.Location
-	MiniAppURL       string
-	Port             string
-	JWTSecret        string
+	TelegramBotToken string         `envconfig:"TELEGRAM_BOT_TOKEN" required:"true"`
+	DatabaseURL      string         `envconfig:"DATABASE_URL" required:"true"`
+	TimezoneName     string         `envconfig:"BOT_TIMEZONE" default:"Europe/Moscow"`
+	Timezone         *time.Location `ignored:"true"`
+	MiniAppURL       string         `envconfig:"MINI_APP_URL"`
+	Port             string         `envconfig:"PORT" default:"8080"`
+	JWTSecret        string         `envconfig:"JWT_SECRET" required:"true"`
 }
 
 // Load reads environment variables, applies defaults, and validates required
 // values before any application components are started.
 func Load() (Config, error) {
-	result := Config{
-		TelegramBotToken: strings.TrimSpace(os.Getenv("TELEGRAM_BOT_TOKEN")),
-		DatabaseURL:      strings.TrimSpace(os.Getenv("DATABASE_URL")),
-		MiniAppURL:       strings.TrimSpace(os.Getenv("MINI_APP_URL")),
-		Port:             strings.TrimSpace(os.Getenv("PORT")),
-		JWTSecret:        strings.TrimSpace(os.Getenv("JWT_SECRET")),
+	var result Config
+	if err := envconfig.Process("", &result); err != nil {
+		return Config{}, fmt.Errorf("load environment config: %w", err)
 	}
+
+	result.TelegramBotToken = strings.TrimSpace(result.TelegramBotToken)
+	result.DatabaseURL = strings.TrimSpace(result.DatabaseURL)
+	result.TimezoneName = strings.TrimSpace(result.TimezoneName)
+	result.MiniAppURL = strings.TrimSpace(result.MiniAppURL)
+	result.Port = strings.TrimSpace(result.Port)
+	result.JWTSecret = strings.TrimSpace(result.JWTSecret)
 	if result.TelegramBotToken == "" {
 		return Config{}, fmt.Errorf("TELEGRAM_BOT_TOKEN is required")
 	}
@@ -45,13 +51,12 @@ func Load() (Config, error) {
 	if err != nil || port < 1 || port > 65535 {
 		return Config{}, fmt.Errorf("PORT must be a number between 1 and 65535")
 	}
-	timezoneName := strings.TrimSpace(os.Getenv("BOT_TIMEZONE"))
-	if timezoneName == "" {
-		timezoneName = "Europe/Moscow"
+	if result.TimezoneName == "" {
+		result.TimezoneName = "Europe/Moscow"
 	}
-	tz, err := time.LoadLocation(timezoneName)
+	tz, err := time.LoadLocation(result.TimezoneName)
 	if err != nil {
-		return Config{}, fmt.Errorf("invalid BOT_TIMEZONE %q: %w", timezoneName, err)
+		return Config{}, fmt.Errorf("invalid BOT_TIMEZONE %q: %w", result.TimezoneName, err)
 	}
 	result.Timezone = tz
 	return result, nil
