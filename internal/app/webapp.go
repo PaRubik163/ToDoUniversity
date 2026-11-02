@@ -56,7 +56,7 @@ func (b *Bot) startWebServer(ctx context.Context, addr string) error {
 	mux.HandleFunc("/tasks", func(w http.ResponseWriter, r *http.Request) { http.ServeFileFS(w, r, sub, "index.html") })
 	userService := service.NewUserService(postgres.NewUserRepository(b.db))
 	authService := service.NewAuthService(postgres.NewAuthRepository(b.db), b.config.JWTSecret)
-	authHandler := newAuthHandler(authService)
+	authHandler := newAuthHandler(authService, b.limiter, b.config.TrustProxyHeaders)
 	mux.HandleFunc("/api/auth/register", authHandler.register)
 	mux.HandleFunc("/api/auth/login", authHandler.login)
 	mux.HandleFunc("/api/auth/refresh", authHandler.refresh)

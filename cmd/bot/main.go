@@ -11,6 +11,7 @@ import (
 	"homework-reminder-bot/internal/app"
 	"homework-reminder-bot/internal/config"
 	"homework-reminder-bot/internal/database"
+	"homework-reminder-bot/internal/ratelimit"
 )
 
 func main() {
@@ -34,5 +35,11 @@ func run(ctx context.Context) error {
 	}
 	defer db.Close()
 
-	return app.New(cfg, db).Run(ctx)
+	limiter, err := ratelimit.NewRedis(cfg.RedisURL)
+	if err != nil {
+		return err
+	}
+	defer limiter.Close()
+
+	return app.New(cfg, db, limiter).Run(ctx)
 }

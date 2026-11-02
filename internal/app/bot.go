@@ -15,6 +15,7 @@ import (
 
 	"homework-reminder-bot/internal/config"
 	"homework-reminder-bot/internal/domain"
+	"homework-reminder-bot/internal/ratelimit"
 	"homework-reminder-bot/internal/repository/postgres"
 	"homework-reminder-bot/internal/service"
 )
@@ -22,9 +23,10 @@ import (
 const pollTimeout = 25 * time.Second
 
 type Bot struct {
-	config config.Config
-	db     *sql.DB
-	client *http.Client
+	config  config.Config
+	db      *sql.DB
+	client  *http.Client
+	limiter ratelimit.Limiter
 }
 
 type updateResponse struct {
@@ -53,11 +55,12 @@ type Message struct {
 type homework = domain.Homework
 
 // New constructs the Telegram bot and its HTTP application services.
-func New(appConfig config.Config, db *sql.DB) *Bot {
+func New(appConfig config.Config, db *sql.DB, limiter ratelimit.Limiter) *Bot {
 	return &Bot{
-		config: appConfig,
-		db:     db,
-		client: &http.Client{Timeout: pollTimeout + 10*time.Second},
+		config:  appConfig,
+		db:      db,
+		client:  &http.Client{Timeout: pollTimeout + 10*time.Second},
+		limiter: limiter,
 	}
 }
 
@@ -180,6 +183,15 @@ func (b *Bot) handleMessage(ctx context.Context, msg *Message) error {
 		parts := strings.Fields(text)
 		if msg.Chat.Type != "private" || msg.From.ID <= 0 || len(parts) != 2 {
 			return b.sendMessage(ctx, msg.Chat.ID, "Для привязки отправьте боту в личном чате: /link КОД")
+		}
+		allowed, retryAfter, err := b.limiter.Allow(ctx, "telegram:link:user:"+strconv.FormatInt(msg.From.ID, 10), 5, 10*time.Minute)
+		if err != nil {
+			log.Printf("Telegram link rate limit unavailable: %v", err)
+			return b.sendMessage(ctx, msg.Chat.ID, "Сервис временно недоступен. Попробуйте позже.")
+		}
+		if !allowed {
+			seconds := int(retryAfter.Round(time.Second).Seconds())
+			return b.sendMessage(ctx, msg.Chat.ID, fmt.Sprintf("Слишком много попыток. Попробуйте через %d секунд.", seconds))
 		}
 		linker := service.NewAuthService(postgres.NewAuthRepository(b.db), b.config.JWTSecret)
 		if err := linker.LinkTelegramAccount(ctx, parts[1], msg.From.ID); err != nil {

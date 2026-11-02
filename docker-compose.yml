@@ -14,6 +14,16 @@ services:
       timeout: 3s
       retries: 10
 
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   bot:
     build:
       context: .
@@ -22,6 +32,8 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?Create .env from .env.example and add the bot token}
       BOT_TIMEZONE: ${BOT_TIMEZONE:-Europe/Moscow}
       DATABASE_URL: postgres://bot_user:change_this_local_password@postgres:5432/homework_bot?sslmode=disable
+      REDIS_URL: redis://redis:6379/0
+      TRUST_PROXY_HEADERS: ${TRUST_PROXY_HEADERS:-true}
       JWT_SECRET: ${JWT_SECRET:?Create a random JWT_SECRET of at least 32 characters}
       MINI_APP_URL: ${MINI_APP_URL:?Create .env from .env.example and add your HTTPS mini app URL, e.g. https://todolist.ooyble.online}
       PORT: ${PORT:-8080}
@@ -29,6 +41,8 @@ services:
       - "127.0.0.1:${PORT:-8080}:${PORT:-8080}"
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
 volumes:

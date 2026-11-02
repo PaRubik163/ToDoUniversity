@@ -7,14 +7,23 @@ import (
 	"log"
 	"mime"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 
+	"homework-reminder-bot/internal/ratelimit"
 	"homework-reminder-bot/internal/service"
 )
 
-type authHandler struct{ auth *service.AuthService }
+type authHandler struct {
+	auth              *service.AuthService
+	limiter           ratelimit.Limiter
+	trustProxyHeaders bool
+}
 
-func newAuthHandler(auth *service.AuthService) *authHandler { return &authHandler{auth: auth} }
+func newAuthHandler(auth *service.AuthService, limiter ratelimit.Limiter, trustProxyHeaders bool) *authHandler {
+	return &authHandler{auth: auth, limiter: limiter, trustProxyHeaders: trustProxyHeaders}
+}
 
 type credentials struct {
 	Email    string `json:"email"`
@@ -26,9 +35,16 @@ func (h *authHandler) register(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", 405)
 		return
 	}
+	clientIP := requestIP(r, h.trustProxyHeaders)
+	if !enforceRateLimits(h.limiter, w, r, rateLimitPolicy{key: "auth:register:ip:" + clientIP, limit: 10, window: time.Hour}) {
+		return
+	}
 	var in credentials
 	if decodeCredentials(w, r, &in) != nil {
 		http.Error(w, "invalid request", 400)
+		return
+	}
+	if !enforceRateLimits(h.limiter, w, r, rateLimitPolicy{key: "auth:register:email:" + strings.ToLower(strings.TrimSpace(in.Email)), limit: 3, window: time.Hour}) {
 		return
 	}
 	p, err := h.auth.Register(r.Context(), in.Email, in.Password)
@@ -52,9 +68,16 @@ func (h *authHandler) login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", 405)
 		return
 	}
+	clientIP := requestIP(r, h.trustProxyHeaders)
+	if !enforceRateLimits(h.limiter, w, r, rateLimitPolicy{key: "auth:login:ip:" + clientIP, limit: 30, window: 15 * time.Minute}) {
+		return
+	}
 	var in credentials
 	if decodeCredentials(w, r, &in) != nil {
 		http.Error(w, "invalid request", 400)
+		return
+	}
+	if !enforceRateLimits(h.limiter, w, r, rateLimitPolicy{key: "auth:login:email:" + strings.ToLower(strings.TrimSpace(in.Email)), limit: 8, window: 15 * time.Minute}) {
 		return
 	}
 	p, err := h.auth.Login(r.Context(), in.Email, in.Password)
@@ -131,6 +154,13 @@ func (h *authHandler) linkCode(w http.ResponseWriter, r *http.Request) {
 	accountID, err := h.auth.ValidateAccess(r.Context(), strings.TrimPrefix(header, "Bearer "))
 	if err != nil {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	clientIP := requestIP(r, h.trustProxyHeaders)
+	if !enforceRateLimits(h.limiter, w, r,
+		rateLimitPolicy{key: "auth:link-code:ip:" + clientIP, limit: 20, window: 10 * time.Minute},
+		rateLimitPolicy{key: "auth:link-code:account:" + strconv.FormatInt(accountID, 10), limit: 5, window: 10 * time.Minute},
+	) {
 		return
 	}
 	code, err := h.auth.IssueLinkCode(r.Context(), accountID)

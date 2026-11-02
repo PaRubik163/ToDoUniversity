@@ -12,13 +12,15 @@ import (
 
 // Config contains the settings required to run the bot and its HTTP API.
 type Config struct {
-	TelegramBotToken string         `envconfig:"TELEGRAM_BOT_TOKEN" required:"true"`
-	DatabaseURL      string         `envconfig:"DATABASE_URL" required:"true"`
-	TimezoneName     string         `envconfig:"BOT_TIMEZONE" default:"Europe/Moscow"`
-	Timezone         *time.Location `ignored:"true"`
-	MiniAppURL       string         `envconfig:"MINI_APP_URL"`
-	Port             string         `envconfig:"PORT" default:"8080"`
-	JWTSecret        string         `envconfig:"JWT_SECRET" required:"true"`
+	TelegramBotToken  string         `envconfig:"TELEGRAM_BOT_TOKEN" required:"true"`
+	DatabaseURL       string         `envconfig:"DATABASE_URL" required:"true"`
+	TimezoneName      string         `envconfig:"BOT_TIMEZONE" default:"Europe/Moscow"`
+	Timezone          *time.Location `ignored:"true"`
+	MiniAppURL        string         `envconfig:"MINI_APP_URL"`
+	Port              string         `envconfig:"PORT" default:"8080"`
+	JWTSecret         string         `envconfig:"JWT_SECRET" required:"true"`
+	RedisURL          string         `envconfig:"REDIS_URL" default:"redis://localhost:6379/0"`
+	TrustProxyHeaders bool           `envconfig:"TRUST_PROXY_HEADERS" default:"false"`
 }
 
 // Load reads environment variables, applies defaults, and validates required
@@ -35,6 +37,7 @@ func Load() (Config, error) {
 	result.MiniAppURL = strings.TrimSpace(result.MiniAppURL)
 	result.Port = strings.TrimSpace(result.Port)
 	result.JWTSecret = strings.TrimSpace(result.JWTSecret)
+	result.RedisURL = strings.TrimSpace(result.RedisURL)
 	if result.TelegramBotToken == "" {
 		return Config{}, fmt.Errorf("TELEGRAM_BOT_TOKEN is required")
 	}
@@ -46,6 +49,9 @@ func Load() (Config, error) {
 	}
 	if result.Port == "" {
 		result.Port = "8080"
+	}
+	if result.RedisURL == "" {
+		result.RedisURL = "redis://localhost:6379/0"
 	}
 	port, err := strconv.Atoi(result.Port)
 	if err != nil || port < 1 || port > 65535 {
