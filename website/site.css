@@ -1,0 +1,16 @@
+.auth-app { min-height: 100vh; padding-top: 30px; }
+.auth-card { gap: 15px; margin: 54px auto 20px; }
+.auth-tabs { display: flex; gap: 20px; border-bottom: 1px solid var(--line); }
+.tab { position: relative; padding: 0 0 11px; border: 0; background: transparent; color: var(--muted); font: 700 12px "Manrope", sans-serif; cursor: pointer; }
+.tab.active { color: var(--olive); }
+.tab.active::after { position: absolute; right: 0; bottom: -1px; left: 0; height: 2px; background: var(--olive); content: ""; }
+.auth-card h2 { margin: 8px 0 0; }
+.auth-subtitle { margin: -7px 0 3px; color: var(--muted); font-size: 13px; }
+#auth-form { display: flex; flex-direction: column; gap: 10px; }
+#auth-form label { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .045em; text-transform: uppercase; }
+#auth-form input { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface-raised); color: var(--ink); font: 500 15px "Manrope", sans-serif; }
+#auth-form input:focus-visible { outline: none; border-color: var(--olive); box-shadow: 0 0 0 3px rgba(89, 100, 75, .14); }
+.auth-submit { width: 100%; min-height: 44px; margin-top: 2px; }
+.auth-note { margin: 22px auto; color: var(--muted); font-size: 12px; text-align: center; }
+.tasks-link { white-space: nowrap; text-decoration: none; }
+@media (max-width: 520px) { .auth-app { padding: 20px 16px 40px; } .auth-card { margin-top: 35px; } .header { gap: 10px; } .header h1 { font-size: 31px; } .tasks-link { padding: 9px 11px; font-size: 12px; } }

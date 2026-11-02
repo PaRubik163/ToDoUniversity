@@ -16,6 +16,7 @@ type Config struct {
 	Timezone         *time.Location
 	MiniAppURL       string
 	Port             string
+	JWTSecret        string
 }
 
 // Load reads environment variables, applies defaults, and validates required
@@ -26,12 +27,16 @@ func Load() (Config, error) {
 		DatabaseURL:      strings.TrimSpace(os.Getenv("DATABASE_URL")),
 		MiniAppURL:       strings.TrimSpace(os.Getenv("MINI_APP_URL")),
 		Port:             strings.TrimSpace(os.Getenv("PORT")),
+		JWTSecret:        strings.TrimSpace(os.Getenv("JWT_SECRET")),
 	}
 	if result.TelegramBotToken == "" {
 		return Config{}, fmt.Errorf("TELEGRAM_BOT_TOKEN is required")
 	}
 	if result.DatabaseURL == "" {
 		return Config{}, fmt.Errorf("DATABASE_URL is required")
+	}
+	if len(result.JWTSecret) < 32 {
+		return Config{}, fmt.Errorf("JWT_SECRET must contain at least 32 characters")
 	}
 	if result.Port == "" {
 		result.Port = "8080"

@@ -24,7 +24,7 @@ import (
 	"homework-reminder-bot/internal/service"
 )
 
-//go:embed miniapp/*
+//go:embed miniapp/* website/*
 var miniAppFiles embed.FS
 
 type telegramUser struct {
@@ -41,17 +41,38 @@ func (b *Bot) startWebServer(ctx context.Context, addr string) error {
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/", http.FileServer(http.FS(sub)))
+	assets := http.FileServer(http.FS(sub))
+	website, err := fs.Sub(miniAppFiles, "website")
+	if err != nil {
+		return fmt.Errorf("mount website assets: %w", err)
+	}
+	websiteFiles := http.FileServer(http.FS(website))
+	mux.Handle("/site.css", websiteFiles)
+	mux.Handle("/site.js", websiteFiles)
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" {
+			http.ServeFileFS(w, r, website, "index.html")
+			return
+		}
+		assets.ServeHTTP(w, r)
+	})
+	mux.HandleFunc("/tasks", func(w http.ResponseWriter, r *http.Request) { http.ServeFileFS(w, r, sub, "index.html") })
 	userService := service.NewUserService(postgres.NewUserRepository(b.db))
+	authService := service.NewAuthService(postgres.NewAuthRepository(b.db), b.config.JWTSecret)
+	authHandler := newAuthHandler(authService)
+	mux.HandleFunc("/api/auth/register", authHandler.register)
+	mux.HandleFunc("/api/auth/login", authHandler.login)
+	mux.HandleFunc("/api/auth/refresh", authHandler.refresh)
+	mux.HandleFunc("/api/auth/logout", authHandler.logout)
 	homeworkRepository := postgres.NewHomeworkRepository(b.db)
 	homeworkService := service.NewHomeworkService(homeworkRepository, b.config.Timezone)
 	homeworkHandler := handler.NewHomeworkHandler(homeworkService, b.config.Timezone)
-	mux.HandleFunc("/api/homework", b.withAuth(homeworkHandler.Collection, userService))
-	mux.HandleFunc("/api/homework/", b.withAuth(homeworkHandler.Item, userService))
-	mux.HandleFunc("/api/events", b.withAuth(b.handleEvents, userService))
-	mux.HandleFunc("/api/events/", b.withAuth(b.handleEventItem, userService))
-	mux.HandleFunc("/api/settings", b.withAuth(b.handleSettings, userService))
-	mux.HandleFunc("/api/analytics", b.withAuth(b.handleAnalytics, userService))
+	mux.HandleFunc("/api/homework", b.withAuth(homeworkHandler.Collection, userService, authService))
+	mux.HandleFunc("/api/homework/", b.withAuth(homeworkHandler.Item, userService, authService))
+	mux.HandleFunc("/api/events", b.withAuth(b.handleEvents, userService, authService))
+	mux.HandleFunc("/api/events/", b.withAuth(b.handleEventItem, userService, authService))
+	mux.HandleFunc("/api/settings", b.withAuth(b.handleSettings, userService, authService))
+	mux.HandleFunc("/api/analytics", b.withAuth(b.handleAnalytics, userService, authService))
 
 	server := &http.Server{
 		Addr:              addr,
@@ -83,8 +104,17 @@ func logRequests(next http.Handler) http.Handler {
 // X-Telegram-Init-Data header and passes the authenticated Telegram user id
 // through to the wrapped handler. The user id doubles as the chat_id used
 // everywhere else in this app, since the bot only ever talks to users 1:1.
-func (b *Bot) withAuth(next func(w http.ResponseWriter, r *http.Request, userID int64), users *service.UserService) http.HandlerFunc {
+func (b *Bot) withAuth(next func(w http.ResponseWriter, r *http.Request, userID int64), users *service.UserService, auth *service.AuthService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if header := r.Header.Get("Authorization"); strings.HasPrefix(header, "Bearer ") {
+			userID, err := auth.ValidateAccess(strings.TrimPrefix(header, "Bearer "))
+			if err != nil {
+				http.Error(w, "invalid access token", http.StatusUnauthorized)
+				return
+			}
+			next(w, r, userID)
+			return
+		}
 		initData := r.Header.Get("X-Telegram-Init-Data")
 		if initData == "" {
 			http.Error(w, "missing init data", http.StatusUnauthorized)

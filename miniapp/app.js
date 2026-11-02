@@ -147,6 +147,15 @@
 
   const tg = window.Telegram && window.Telegram.WebApp;
   const initData = tg ? tg.initData : "";
+  const webLogout = document.getElementById("web-logout");
+  if (webLogout && localStorage.getItem("access_token")) {
+    webLogout.classList.remove("hidden");
+    webLogout.addEventListener("click", function () {
+      fetch("/api/auth/logout", {method:"POST", credentials:"same-origin"}).finally(function () {
+        localStorage.removeItem("access_token"); location.href="/";
+      });
+    });
+  }
 
   const listEl = document.getElementById("list");
   const emptyEl = document.getElementById("empty-state");
@@ -224,7 +233,7 @@
     tg.expand();
   }
 
-  if (!initData) {
+  if (!initData && !localStorage.getItem("access_token")) {
     setStatus(t("openTelegram"));
   } else {
     loadHomework();
@@ -964,11 +973,23 @@
 
   function apiFetch(path, options) {
     options = options || {};
-    options.headers = Object.assign({}, options.headers, {
-      "X-Telegram-Init-Data": initData,
-      "Content-Type": "application/json",
-    });
+    options.headers = Object.assign({}, options.headers, {"Content-Type": "application/json"});
+    const webToken = localStorage.getItem("access_token");
+    if (webToken) options.headers.Authorization = "Bearer " + webToken;
+    else options.headers["X-Telegram-Init-Data"] = initData;
     return fetch(path, options).then(function (resp) {
+      if (resp.status === 401 && webToken) {
+        return fetch("/api/auth/refresh", {method:"POST", credentials:"same-origin"}).then(function (renewed) {
+          if (!renewed.ok) { localStorage.removeItem("access_token"); location.href="/"; throw new Error("Сессия завершена. Войдите снова."); }
+          return renewed.json();
+        }).then(function (renewed) {
+          localStorage.setItem("access_token", renewed.access_token);
+          options.headers.Authorization = "Bearer " + renewed.access_token;
+          return fetch(path, options);
+        });
+      }
+      return resp;
+    }).then(function (resp) {
       if (resp.status === 204) return null;
       if (!resp.ok) {
         return resp.text().then(function (text) {
