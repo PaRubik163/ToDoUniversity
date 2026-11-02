@@ -2,6 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
+	"io"
+	"log"
+	"mime"
 	"net/http"
 	"strings"
 
@@ -23,13 +27,21 @@ func (h *authHandler) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var in credentials
-	if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&in) != nil {
+	if decodeCredentials(w, r, &in) != nil {
 		http.Error(w, "invalid request", 400)
 		return
 	}
 	p, err := h.auth.Register(r.Context(), in.Email, in.Password)
 	if err != nil {
-		http.Error(w, err.Error(), 400)
+		switch {
+		case errors.Is(err, service.ErrInvalidRegistration):
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		case errors.Is(err, service.ErrEmailExists):
+			http.Error(w, err.Error(), http.StatusConflict)
+		default:
+			log.Printf("register account: %v", err)
+			http.Error(w, "could not create account", http.StatusInternalServerError)
+		}
 		return
 	}
 	h.respond(w, r, p)
@@ -41,7 +53,7 @@ func (h *authHandler) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var in credentials
-	if json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&in) != nil {
+	if decodeCredentials(w, r, &in) != nil {
 		http.Error(w, "invalid request", 400)
 		return
 	}
@@ -51,6 +63,23 @@ func (h *authHandler) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.respond(w, r, p)
+}
+
+func decodeCredentials(w http.ResponseWriter, r *http.Request, in *credentials) error {
+	mediaType, _, mediaTypeErr := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	if mediaTypeErr != nil || mediaType != "application/json" {
+		return errors.New("content type must be application/json")
+	}
+	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(in); err != nil {
+		return err
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		return errors.New("request must contain one JSON object")
+	}
+	return nil
 }
 
 func (h *authHandler) refresh(w http.ResponseWriter, r *http.Request) {
@@ -68,6 +97,7 @@ func (h *authHandler) refresh(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid refresh token", 401)
 		return
 	}
+	w.Header().Set("Cache-Control", "no-store")
 	http.SetCookie(w, &http.Cookie{Name: "refresh_token", Value: p.RefreshToken, Path: "/api/auth", HttpOnly: true, Secure: r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https", SameSite: http.SameSiteStrictMode, MaxAge: 30 * 24 * 3600})
 	p.RefreshToken = ""
 	writeJSON(w, p)
@@ -105,9 +135,15 @@ func (h *authHandler) linkCode(w http.ResponseWriter, r *http.Request) {
 	}
 	code, err := h.auth.IssueLinkCode(r.Context(), accountID)
 	if err != nil {
+		if errors.Is(err, service.ErrAlreadyLinked) {
+			http.Error(w, "Telegram account is already linked", http.StatusConflict)
+			return
+		}
+		log.Printf("create account link code: %v", err)
 		http.Error(w, "could not create link code", http.StatusInternalServerError)
 		return
 	}
+	w.Header().Set("Cache-Control", "no-store")
 	writeJSON(w, struct {
 		Code      string `json:"code"`
 		ExpiresIn int    `json:"expires_in"`
@@ -115,6 +151,7 @@ func (h *authHandler) linkCode(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *authHandler) respond(w http.ResponseWriter, r *http.Request, p service.TokenPair) {
+	w.Header().Set("Cache-Control", "no-store")
 	http.SetCookie(w, &http.Cookie{Name: "refresh_token", Value: p.RefreshToken, Path: "/api/auth", HttpOnly: true, Secure: r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https", SameSite: http.SameSiteStrictMode, MaxAge: 30 * 24 * 3600})
 	p.RefreshToken = ""
 	writeJSON(w, p)

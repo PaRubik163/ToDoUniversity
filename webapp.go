@@ -79,6 +79,9 @@ func (b *Bot) startWebServer(ctx context.Context, addr string) error {
 		Addr:              addr,
 		Handler:           logRequests(mux),
 		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       20 * time.Second,
+		IdleTimeout:       60 * time.Second,
+		MaxHeaderBytes:    64 << 10,
 	}
 	go func() {
 		<-ctx.Done()
@@ -96,6 +99,12 @@ func (b *Bot) startWebServer(ctx context.Context, addr string) error {
 
 func logRequests(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Referrer-Policy", "same-origin")
+		if strings.HasPrefix(r.URL.Path, "/api/") {
+			w.Header().Set("Cache-Control", "no-store")
+			r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+		}
 		next.ServeHTTP(w, r)
 		log.Printf("%s %s", r.Method, r.URL.Path)
 	})
@@ -139,9 +148,17 @@ func (b *Bot) withAuth(next func(w http.ResponseWriter, r *http.Request, userID 
 // https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app
 // and returns the authenticated user's Telegram id.
 func validateInitData(initData, botToken string) (int64, error) {
+	if len(initData) == 0 || len(initData) > 16<<10 {
+		return 0, errors.New("invalid init data size")
+	}
 	values, err := url.ParseQuery(initData)
 	if err != nil {
 		return 0, fmt.Errorf("parse init data: %w", err)
+	}
+	for key, value := range values {
+		if len(value) != 1 {
+			return 0, fmt.Errorf("duplicate init data field %q", key)
+		}
 	}
 
 	receivedHash := values.Get("hash")
@@ -174,12 +191,13 @@ func validateInitData(initData, botToken string) (int64, error) {
 		return 0, errors.New("hash mismatch")
 	}
 
-	if authDateStr := values.Get("auth_date"); authDateStr != "" {
-		if authDate, err := strconv.ParseInt(authDateStr, 10, 64); err == nil {
-			if time.Since(time.Unix(authDate, 0)) > 24*time.Hour {
-				return 0, errors.New("init data expired")
-			}
-		}
+	authDate, err := strconv.ParseInt(values.Get("auth_date"), 10, 64)
+	if err != nil || authDate <= 0 {
+		return 0, errors.New("missing or invalid auth date")
+	}
+	issuedAt := time.Unix(authDate, 0)
+	if time.Since(issuedAt) > 24*time.Hour || issuedAt.After(time.Now().Add(time.Minute)) {
+		return 0, errors.New("init data expired or issued in the future")
 	}
 
 	userJSON := values.Get("user")

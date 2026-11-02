@@ -2,8 +2,11 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"time"
 )
+
+var ErrEmailExists = errors.New("email already exists")
 
 type AuthAccount struct {
 	ID                  int64

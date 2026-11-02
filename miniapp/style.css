@@ -204,6 +204,12 @@ body {
 .button:active { transform: translateY(1px); }
 .button.primary { border-color: #263a2d; background: #263a2d; color: #fffdf8; }
 .button.primary:hover { border-color: #1d3024; background: #1d3024; }
+.link-code-dialog { width: min(420px, calc(100vw - 32px)); padding: 0; border: 0; background: transparent; color: var(--ink); }
+.link-code-dialog::backdrop { background: rgba(16, 20, 16, .48); }
+.link-code-dialog .add-form { margin: 0; }
+.link-code-dialog p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.link-code-value { display: block; padding: 15px; border: 1px dashed var(--brass); background: var(--brass-soft); color: var(--olive); font: 700 22px/1.2 "Manrope", sans-serif; letter-spacing: .16em; text-align: center; user-select: all; }
+.link-code-dialog .button { width: 100%; }
 .button.secondary { border-color: var(--line); background: transparent; color: var(--muted); }
 .button.secondary:hover { border-color: var(--muted); color: var(--ink); }
 

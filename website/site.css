@@ -10,6 +10,10 @@
 #auth-form label { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .045em; text-transform: uppercase; }
 #auth-form input { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface-raised); color: var(--ink); font: 500 15px "Manrope", sans-serif; }
 #auth-form input:focus-visible { outline: none; border-color: var(--olive); box-shadow: 0 0 0 3px rgba(89, 100, 75, .14); }
+.password-control { position: relative; display: block; }
+.password-control input { padding-right: 105px !important; }
+.password-control button { position: absolute; top: 50%; right: 10px; transform: translateY(-50%); padding: 5px 7px; border: 0; background: transparent; color: var(--olive); font: 700 11px "Manrope", sans-serif; cursor: pointer; }
+.password-control button:focus-visible { outline: 2px solid var(--olive); outline-offset: 2px; }
 .auth-submit { width: 100%; min-height: 44px; margin-top: 2px; }
 .auth-note { margin: 22px auto; color: var(--muted); font-size: 12px; text-align: center; }
 @media (max-width: 520px) { .auth-app { padding: 20px 16px 40px; } .auth-card { margin-top: 35px; } .header { gap: 10px; } .header h1 { font-size: 31px; } }

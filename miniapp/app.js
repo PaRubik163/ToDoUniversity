@@ -1,6 +1,8 @@
 (function () {
   "use strict";
 
+  try { localStorage.removeItem("access_token"); localStorage.removeItem("telegram_linked"); } catch (_) {}
+
   const translations = {
     ru: {
       appTitle: "Задания", settingsAria: "Настройки", addTaskAria: "Добавить задание",
@@ -148,23 +150,57 @@
   const tg = window.Telegram && window.Telegram.WebApp;
   const initData = tg ? tg.initData : "";
   const webLink = document.getElementById("web-link");
-  if (webLink && localStorage.getItem("access_token") && localStorage.getItem("telegram_linked") !== "true") {
-    webLink.classList.remove("hidden");
-    webLink.addEventListener("click", function () {
-      apiFetch("/api/auth/link-code", {method:"POST"}).then(function (result) {
-        window.alert("Код: " + result.code + "\n\nОтправьте боту сообщение /link " + result.code + ". Код действует 10 минут. После ответа бота обновите страницу.");
-      }).catch(function (err) { setStatus("Не удалось создать код: " + err.message); });
-    });
-  }
   const webLogout = document.getElementById("web-logout");
-  if (webLogout && localStorage.getItem("access_token")) {
-    webLogout.classList.remove("hidden");
-    webLogout.addEventListener("click", function () {
-      fetch("/api/auth/logout", {method:"POST", credentials:"same-origin"}).finally(function () {
-        localStorage.removeItem("access_token"); localStorage.removeItem("telegram_linked"); location.href="/";
-      });
-    });
+  function configureWebActions() {
+    if (!sessionStorage.getItem("access_token")) return;
+    if (webLink && sessionStorage.getItem("telegram_linked") !== "true") {
+      webLink.classList.remove("hidden");
+      if (!webLink.dataset.bound) {
+        webLink.dataset.bound = "true";
+        webLink.addEventListener("click", function () {
+          apiFetch("/api/auth/link-code", {method:"POST"}).then(showLinkCode).catch(function (err) { setStatus("Не удалось создать код: " + err.message); });
+        });
+      }
+    } else if (webLink) webLink.classList.add("hidden");
+    if (webLogout) {
+      webLogout.classList.remove("hidden");
+      if (!webLogout.dataset.bound) {
+        webLogout.dataset.bound = "true";
+        webLogout.addEventListener("click", function () {
+          fetch("/api/auth/logout", {method:"POST", credentials:"same-origin"}).finally(function () {
+            sessionStorage.removeItem("access_token"); sessionStorage.removeItem("telegram_linked"); location.href="/";
+          });
+        });
+      }
+    }
   }
+  configureWebActions();
+
+  function showLinkCode(result) {
+    const dialog = document.getElementById("link-code-dialog");
+    document.getElementById("link-code-value").textContent = result.code;
+    dialog.showModal();
+  }
+
+  const linkCodeDialog = document.getElementById("link-code-dialog");
+  document.getElementById("copy-link-code").addEventListener("click", function () {
+    const code = document.getElementById("link-code-value").textContent;
+    function copied(fallbackResult) {
+      this.textContent = fallbackResult ? "Скопировано" : "Выделите код вручную";
+      if (fallbackResult) setTimeout(() => { this.textContent = "Скопировать код"; }, 1800);
+    }
+    function fallbackCopy() {
+      const field = document.createElement("textarea"); field.value = code; field.setAttribute("readonly", "");
+      field.style.position = "fixed"; field.style.opacity = "0"; document.body.appendChild(field); field.select();
+      const result = document.execCommand("copy"); field.remove(); copied.call(this, result);
+    }
+    if (!navigator.clipboard || !navigator.clipboard.writeText) { fallbackCopy.call(this); return; }
+    navigator.clipboard.writeText(code).then(function () {
+      this.textContent = "Скопировано";
+      setTimeout(() => { this.textContent = "Скопировать код"; }, 1800);
+    }.bind(this)).catch(fallbackCopy.bind(this));
+  });
+  document.getElementById("close-link-code").addEventListener("click", function () { linkCodeDialog.close(); });
 
   const listEl = document.getElementById("list");
   const emptyEl = document.getElementById("empty-state");
@@ -242,10 +278,18 @@
     tg.expand();
   }
 
-  if (!initData && !localStorage.getItem("access_token")) {
-    setStatus(t("openTelegram"));
-  } else {
+  if (initData || sessionStorage.getItem("access_token")) {
     loadHomework();
+  } else {
+    fetch("/api/auth/refresh", {method:"POST", credentials:"same-origin"}).then(function (response) {
+      if (!response.ok) throw new Error("no web session");
+      return response.json();
+    }).then(function (tokens) {
+      sessionStorage.setItem("access_token", tokens.access_token);
+      sessionStorage.setItem("telegram_linked", String(tokens.telegram_linked));
+      configureWebActions();
+      loadHomework();
+    }).catch(function () { setStatus(t("openTelegram")); });
   }
 
   sectionButtons.forEach(function (button) {
@@ -987,12 +1031,12 @@
         if (!response.ok) throw new Error("Сессия завершена. Войдите снова.");
         return response.json();
       }).then(function (renewed) {
-        localStorage.setItem("access_token", renewed.access_token);
-        localStorage.setItem("telegram_linked", String(renewed.telegram_linked));
-        if (renewed.telegram_linked && webLink) webLink.classList.add("hidden");
+        sessionStorage.setItem("access_token", renewed.access_token);
+        sessionStorage.setItem("telegram_linked", String(renewed.telegram_linked));
+        configureWebActions();
         return renewed.access_token;
       }).catch(function (err) {
-        localStorage.removeItem("access_token"); localStorage.removeItem("telegram_linked"); location.href="/"; throw err;
+        sessionStorage.removeItem("access_token"); sessionStorage.removeItem("telegram_linked"); location.href="/"; throw err;
       }).finally(function () { refreshInFlight = null; });
     }
     return refreshInFlight;
@@ -1001,7 +1045,7 @@
   function apiFetch(path, options) {
     options = options || {};
     options.headers = Object.assign({}, options.headers, {"Content-Type": "application/json"});
-    const webToken = localStorage.getItem("access_token");
+    const webToken = sessionStorage.getItem("access_token");
     if (webToken) options.headers.Authorization = "Bearer " + webToken;
     else options.headers["X-Telegram-Init-Data"] = initData;
     return fetch(path, options).then(function (resp) {

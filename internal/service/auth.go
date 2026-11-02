@@ -10,6 +10,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/mail"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,6 +21,9 @@ import (
 
 var ErrCredentials = errors.New("invalid email or password")
 var ErrRefresh = errors.New("invalid refresh token")
+var ErrInvalidRegistration = errors.New("invalid email or password")
+var ErrEmailExists = errors.New("email already registered")
+var ErrAlreadyLinked = errors.New("Telegram account already linked")
 
 type TokenPair struct {
 	AccessToken    string `json:"access_token"`
@@ -38,8 +43,9 @@ func NewAuthService(repo repository.AuthRepository, secret string) *AuthService 
 }
 func (s *AuthService) Register(ctx context.Context, email, password string) (TokenPair, error) {
 	email = strings.ToLower(strings.TrimSpace(email))
-	if len(email) > 254 || !strings.Contains(email, "@") || len(password) < 8 || len(password) > 72 {
-		return TokenPair{}, errors.New("email is invalid or password must contain 8 to 72 characters")
+	parsedEmail, emailErr := mail.ParseAddress(email)
+	if len(email) > 254 || emailErr != nil || parsedEmail.Address != email || len(password) < 8 || len(password) > 72 {
+		return TokenPair{}, ErrInvalidRegistration
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -47,6 +53,9 @@ func (s *AuthService) Register(ctx context.Context, email, password string) (Tok
 	}
 	id, err := s.repo.Create(ctx, email, string(hash))
 	if err != nil {
+		if errors.Is(err, repository.ErrEmailExists) {
+			return TokenPair{}, ErrEmailExists
+		}
 		return TokenPair{}, err
 	}
 	return s.issue(ctx, id)
@@ -86,9 +95,9 @@ func (s *AuthService) Logout(ctx context.Context, token string) error {
 
 func (s *AuthService) IssueLinkCode(ctx context.Context, accountID int64) (string, error) {
 	if accountID > 0 {
-		return "", errors.New("Telegram account is already linked")
+		return "", ErrAlreadyLinked
 	}
-	raw := make([]byte, 5)
+	raw := make([]byte, 12)
 	if _, err := rand.Read(raw); err != nil {
 		return "", err
 	}
@@ -129,8 +138,22 @@ func (s *AuthService) access(id int64) (string, error) {
 	return body + "." + enc.EncodeToString(mac.Sum(nil)), nil
 }
 func (s *AuthService) ValidateAccess(ctx context.Context, token string) (int64, error) {
+	if len(token) > 4096 {
+		return 0, ErrCredentials
+	}
 	parts := strings.Split(token, ".")
 	if len(parts) != 3 {
+		return 0, ErrCredentials
+	}
+	headerBytes, err := base64.RawURLEncoding.DecodeString(parts[0])
+	if err != nil {
+		return 0, ErrCredentials
+	}
+	var header struct {
+		Algorithm string `json:"alg"`
+		Type      string `json:"typ"`
+	}
+	if json.Unmarshal(headerBytes, &header) != nil || header.Algorithm != "HS256" || header.Type != "JWT" {
 		return 0, ErrCredentials
 	}
 	body := parts[0] + "." + parts[1]
@@ -146,13 +169,15 @@ func (s *AuthService) ValidateAccess(ctx context.Context, token string) (int64, 
 	}
 	var claims struct {
 		Sub string `json:"sub"`
+		Iat int64  `json:"iat"`
 		Exp int64  `json:"exp"`
 	}
-	if json.Unmarshal(b, &claims) != nil || claims.Exp <= s.now().Unix() {
+	now := s.now().Unix()
+	if json.Unmarshal(b, &claims) != nil || claims.Exp <= now || claims.Iat > now+30 || claims.Exp <= claims.Iat || claims.Exp-claims.Iat > int64((15*time.Minute)/time.Second) {
 		return 0, ErrCredentials
 	}
-	var id int64
-	if _, err = fmt.Sscan(claims.Sub, &id); err != nil || id == 0 {
+	id, err := strconv.ParseInt(claims.Sub, 10, 64)
+	if err != nil || id == 0 {
 		return 0, ErrCredentials
 	}
 	exists, err := s.repo.AccountExists(ctx, id)

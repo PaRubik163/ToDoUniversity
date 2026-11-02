@@ -154,6 +154,15 @@
   <ul id="list" class="list"></ul>
 
   <p id="empty-state" class="empty hidden"></p>
+  <dialog id="link-code-dialog" class="link-code-dialog" aria-labelledby="link-code-title">
+    <section class="add-form">
+      <h2 id="link-code-title" class="form-title">Связать Telegram</h2>
+      <p>Скопируйте код и отправьте боту командой <strong>/link КОД</strong>. Код действует 10 минут.</p>
+      <code id="link-code-value" class="link-code-value"></code>
+      <button id="copy-link-code" class="button primary" type="button">Скопировать код</button>
+      <button id="close-link-code" class="button secondary" type="button">Закрыть</button>
+    </section>
+  </dialog>
 </div>
 
 <script src="app.js"></script>

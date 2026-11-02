@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"homework-reminder-bot/internal/repository"
 )
 
@@ -24,6 +25,10 @@ func (r *AuthRepository) Create(ctx context.Context, email, passwordHash string)
 		return 0, err
 	}
 	if _, err = tx.ExecContext(ctx, `INSERT INTO auth_accounts(id,email,password_hash) VALUES($1,$2,$3)`, id, email, passwordHash); err != nil {
+		var postgresError *pgconn.PgError
+		if errors.As(err, &postgresError) && postgresError.Code == "23505" {
+			return 0, repository.ErrEmailExists
+		}
 		return 0, err
 	}
 	if _, err = tx.ExecContext(ctx, `INSERT INTO user_settings(chat_id,language) VALUES($1,'ru')`, id); err != nil {
@@ -40,6 +45,9 @@ func (r *AuthRepository) FindByEmail(ctx context.Context, email string) (reposit
 	return a, err
 }
 func (r *AuthRepository) SaveRefresh(ctx context.Context, hash []byte, userID int64, expires time.Time) error {
+	if _, err := r.db.ExecContext(ctx, `DELETE FROM auth_refresh_tokens WHERE expires_at<=now()`); err != nil {
+		return err
+	}
 	_, err := r.db.ExecContext(ctx, `INSERT INTO auth_refresh_tokens(token_hash,user_id,expires_at) VALUES($1,$2,$3)`, hash, userID, expires)
 	return err
 }
