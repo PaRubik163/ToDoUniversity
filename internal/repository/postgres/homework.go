@@ -85,11 +85,38 @@ func (r *HomeworkRepository) Update(ctx context.Context, userID, id int64, item 
 }
 
 func (r *HomeworkRepository) Delete(ctx context.Context, userID, id int64) error {
-	result, err := r.db.ExecContext(ctx, `DELETE FROM homework WHERE id = $1 AND chat_id = $2`, id, userID)
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin delete homework: %w", err)
+	}
+	defer tx.Rollback()
+	var ownedID int64
+	if err := tx.QueryRowContext(ctx, `SELECT id FROM homework WHERE id = $1 AND chat_id = $2 FOR UPDATE`, id, userID).Scan(&ownedID); err != nil {
+		if err == sql.ErrNoRows {
+			return repository.ErrNotFound
+		}
+		return fmt.Errorf("find homework to delete: %w", err)
+	}
+
+	// Delete dependent rows explicitly so task deletion also works on databases
+	// created before the foreign keys were configured with ON DELETE CASCADE.
+	if _, err := tx.ExecContext(ctx, `DELETE FROM reminder_log WHERE homework_id = $1`, id); err != nil {
+		return fmt.Errorf("delete homework reminders: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM homework_status WHERE homework_id = $1`, id); err != nil {
+		return fmt.Errorf("delete homework status: %w", err)
+	}
+	result, err := tx.ExecContext(ctx, `DELETE FROM homework WHERE id = $1 AND chat_id = $2`, id, userID)
 	if err != nil {
 		return fmt.Errorf("delete homework: %w", err)
 	}
-	return requireAffected(result)
+	if err := requireAffected(result); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit delete homework: %w", err)
+	}
+	return nil
 }
 
 func (r *HomeworkRepository) SetCompleted(ctx context.Context, userID, id int64, completed bool) error {

@@ -278,19 +278,28 @@
     tg.expand();
   }
 
-  if (initData || sessionStorage.getItem("access_token")) {
+  fetch("/api/auth/refresh", {method:"POST", credentials:"same-origin"}).then(function (response) {
+    if (!response.ok) throw new Error("no web session");
+    return response.json();
+  }).then(function (tokens) {
+    sessionStorage.setItem("access_token", tokens.access_token);
+    sessionStorage.setItem("telegram_linked", String(tokens.telegram_linked));
+    configureWebActions();
     loadHomework();
-  } else {
-    fetch("/api/auth/refresh", {method:"POST", credentials:"same-origin"}).then(function (response) {
-      if (!response.ok) throw new Error("no web session");
-      return response.json();
-    }).then(function (tokens) {
-      sessionStorage.setItem("access_token", tokens.access_token);
-      sessionStorage.setItem("telegram_linked", String(tokens.telegram_linked));
+  }).catch(function () {
+    if (initData) {
+      sessionStorage.removeItem("access_token");
+      sessionStorage.removeItem("telegram_linked");
+      loadHomework();
+      return;
+    }
+    if (sessionStorage.getItem("access_token")) {
       configureWebActions();
       loadHomework();
-    }).catch(function () { setStatus(t("openTelegram")); });
-  }
+      return;
+    }
+    setStatus(t("openTelegram"));
+  });
 
   sectionButtons.forEach(function (button) {
     button.addEventListener("click", function () {
