@@ -2,3 +2,14 @@
 .git
 todo-bot
 coverage.out
+.DS_Store
+*.log
+*.tmp
+node_modules
+dist
+build
+.vscode
+.idea
+.codex
+.agents
+.aws

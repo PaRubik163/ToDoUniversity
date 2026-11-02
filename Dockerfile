@@ -1,10 +1,14 @@
+# syntax=docker/dockerfile:1.7
 FROM golang:1.23-alpine AS build
 
 WORKDIR /src
 COPY go.mod go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
 COPY . .
-RUN CGO_ENABLED=0 go build -o /out/todo-bot .
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    GOMAXPROCS=1 GOGC=50 GOMEMLIMIT=600MiB CGO_ENABLED=0 \
+    go build -p 1 -trimpath -buildvcs=false -ldflags="-s -w" -o /out/todo-bot .
 
 FROM alpine:3.20
 RUN apk add --no-cache ca-certificates tzdata \
