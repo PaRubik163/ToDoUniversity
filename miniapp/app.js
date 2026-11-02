@@ -622,13 +622,7 @@
   }
 
   function deleteHomework(id, itemEl) {
-    const confirmed = tg && tg.showConfirm
-      ? new Promise(function (resolve) {
-          tg.showConfirm(t("deleteConfirm"), resolve);
-        })
-      : Promise.resolve(window.confirm(t("deleteConfirm")));
-
-    confirmed.then(function (ok) {
+    askForConfirmation(t("deleteConfirm")).then(function (ok) {
       if (!ok) return;
       apiFetch("/api/homework/" + id, { method: "DELETE" })
         .then(function () {
@@ -735,7 +729,7 @@
     const edit = document.createElement("button"); edit.type = "button"; edit.className = "icon-action edit-button"; edit.textContent = "✎"; edit.setAttribute("aria-label", t("editTaskAria"));
     edit.addEventListener("click", function () { openEventEditForm(item); });
     const remove = document.createElement("button"); remove.type = "button"; remove.className = "icon-action delete-button"; remove.textContent = "×"; remove.setAttribute("aria-label", t("deleteTaskAria"));
-    remove.addEventListener("click", function () { const ok = tg && tg.showConfirm ? new Promise(function (resolve) { tg.showConfirm(t("eventDelete"), resolve); }) : Promise.resolve(window.confirm(t("eventDelete"))); ok.then(function (yes) { if (yes) apiFetch("/api/events/" + item.id, { method: "DELETE" }).then(refreshEvents).then(loadAnalytics).catch(function (err) { setStatus(t("eventError") + err.message); }); }); });
+    remove.addEventListener("click", function () { askForConfirmation(t("eventDelete")).then(function (yes) { if (yes) apiFetch("/api/events/" + item.id, { method: "DELETE" }).then(refreshEvents).then(loadAnalytics).catch(function (err) { setStatus(t("eventError") + err.message); }); }); });
     actions.append(complete, edit, remove); li.append(body, actions); return li;
   }
 
@@ -1027,6 +1021,43 @@
     if (remainder === 1 && lastTwo !== 11) return t("dayUnitOne");
     if (remainder >= 2 && remainder <= 4 && (lastTwo < 12 || lastTwo > 14)) return t("dayUnitFew");
     return t("dayUnit");
+  }
+
+  function askForConfirmation(message) {
+    return showInAppConfirmation(message);
+  }
+
+  function showInAppConfirmation(message) {
+    return new Promise(function (resolve) {
+      const dialog = document.createElement("dialog");
+      dialog.className = "confirm-dialog";
+      const content = document.createElement("section");
+      content.className = "add-form confirm-dialog-content";
+      const text = document.createElement("p");
+      text.className = "confirm-dialog-message";
+      text.textContent = message;
+      const actions = document.createElement("div");
+      actions.className = "form-actions";
+      const cancel = document.createElement("button");
+      cancel.type = "button";
+      cancel.className = "button secondary";
+      cancel.textContent = t("cancel");
+      cancel.addEventListener("click", function () { dialog.close("cancel"); });
+      const confirm = document.createElement("button");
+      confirm.type = "button";
+      confirm.className = "button primary";
+      confirm.textContent = t("deleteTaskAria");
+      confirm.addEventListener("click", function () { dialog.close("confirm"); });
+      actions.append(cancel, confirm);
+      content.append(text, actions);
+      dialog.appendChild(content);
+      dialog.addEventListener("close", function () {
+        resolve(dialog.returnValue === "confirm");
+        dialog.remove();
+      }, { once: true });
+      document.body.appendChild(dialog);
+      dialog.showModal();
+    });
   }
 
   let refreshInFlight = null;
