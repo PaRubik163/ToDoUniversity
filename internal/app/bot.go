@@ -419,8 +419,11 @@ func (b *Bot) sendDueEventReminders(ctx context.Context, now time.Time) {
 		SELECT id, chat_id, title, event_at
 		FROM calendar_events
 		WHERE is_completed = FALSE AND reminder_hours > 0
-		  AND event_at - reminder_hours * interval '1 hour' >= $1 - interval '1 minute'
-		  AND event_at - reminder_hours * interval '1 hour' < $1`, now)
+		  AND event_at - reminder_hours * interval '1 hour' <= $1
+		  AND event_at > $1
+		  AND NOT EXISTS (
+			  SELECT 1 FROM calendar_event_reminder_log sent WHERE sent.event_id = calendar_events.id
+		  )`, now)
 	if err != nil {
 		log.Printf("event reminder query: %v", err)
 		return
@@ -434,18 +437,13 @@ func (b *Bot) sendDueEventReminders(ctx context.Context, now time.Time) {
 			log.Printf("scan event reminder: %v", err)
 			continue
 		}
-		result, err := b.db.ExecContext(ctx, `INSERT INTO calendar_event_reminder_log (event_id) VALUES ($1) ON CONFLICT DO NOTHING`, id)
-		if err != nil {
-			log.Printf("log event reminder: %v", err)
-			continue
-		}
-		added, _ := result.RowsAffected()
-		if added == 0 {
-			continue
-		}
 		message := fmt.Sprintf("📅 Напоминание о событии\n%s\n%s", title, eventAt.In(b.config.Timezone).Format("02.01.2006 в 15:04"))
 		if err := b.sendMessage(ctx, chatID, message); err != nil {
 			log.Printf("send event reminder: %v", err)
+			continue
+		}
+		if _, err := b.db.ExecContext(ctx, `INSERT INTO calendar_event_reminder_log (event_id) VALUES ($1) ON CONFLICT DO NOTHING`, id); err != nil {
+			log.Printf("log event reminder: %v", err)
 		}
 	}
 	if err := rows.Err(); err != nil {

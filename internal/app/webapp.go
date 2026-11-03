@@ -44,6 +44,7 @@ func (b *Bot) startWebServer(ctx context.Context, addr string) error {
 		return fmt.Errorf("mount website assets: %w", err)
 	}
 	websiteFiles := http.FileServer(http.FS(website))
+	mux.Handle("/favicon.png", websiteFiles)
 	mux.Handle("/site.css", websiteFiles)
 	mux.Handle("/site.js", websiteFiles)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
