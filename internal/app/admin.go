@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -78,33 +79,11 @@ func (b *Bot) manageProjectContainers(ctx context.Context, action string) (int, 
 	if action != "restart" && action != "delete" {
 		return 0, fmt.Errorf("unknown action")
 	}
-	client := &http.Client{Timeout: 30 * time.Second, Transport: &http.Transport{DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
-		return (&net.Dialer{}).DialContext(ctx, "unix", b.config.DockerSocket)
-	}}}
-	endpoint := "http://docker/containers/json?all=1"
-	filters, _ := json.Marshal(map[string][]string{"label": {"com.docker.compose.project=" + b.config.ComposeProject}})
-	endpoint += "&filters=" + url.QueryEscape(string(filters))
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	client := b.dockerClient()
+	containers, err := b.listProjectContainers(ctx, client)
 	if err != nil {
 		return 0, err
 	}
-	response, err := client.Do(request)
-	if err != nil {
-		return 0, err
-	}
-	var containers []dockerContainer
-	err = json.NewDecoder(response.Body).Decode(&containers)
-	response.Body.Close()
-	if err != nil {
-		return 0, err
-	}
-	sort.Slice(containers, func(i, j int) bool {
-		a, c := strings.TrimPrefix(containers[i].Labels["com.docker.compose.service"], ""), strings.TrimPrefix(containers[j].Labels["com.docker.compose.service"], "")
-		if (a == "bot") != (c == "bot") {
-			return a != "bot"
-		}
-		return a < c
-	})
 	completed := 0
 	for _, container := range containers {
 		path := "/containers/" + url.PathEscape(container.ID)
@@ -131,6 +110,92 @@ func (b *Bot) manageProjectContainers(ctx context.Context, action string) (int, 
 		completed++
 	}
 	return completed, nil
+}
+
+func (b *Bot) dockerClient() *http.Client {
+	client := &http.Client{Timeout: 30 * time.Second, Transport: &http.Transport{DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+		return (&net.Dialer{}).DialContext(ctx, "unix", b.config.DockerSocket)
+	}}}
+	return client
+}
+
+func (b *Bot) listProjectContainers(ctx context.Context, client *http.Client) ([]dockerContainer, error) {
+	endpoint := "http://docker/containers/json?all=1"
+	filters, _ := json.Marshal(map[string][]string{"label": {"com.docker.compose.project=" + b.config.ComposeProject}})
+	endpoint += "&filters=" + url.QueryEscape(string(filters))
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	response, err := client.Do(request)
+	if err != nil {
+		return nil, err
+	}
+	if response.StatusCode/100 != 2 {
+		body, _ := io.ReadAll(io.LimitReader(response.Body, 2048))
+		response.Body.Close()
+		return nil, fmt.Errorf("Docker API %s: %s", response.Status, strings.TrimSpace(string(body)))
+	}
+	var containers []dockerContainer
+	err = json.NewDecoder(response.Body).Decode(&containers)
+	response.Body.Close()
+	if err != nil {
+		return nil, err
+	}
+	sort.Slice(containers, func(i, j int) bool {
+		a, c := strings.TrimPrefix(containers[i].Labels["com.docker.compose.service"], ""), strings.TrimPrefix(containers[j].Labels["com.docker.compose.service"], "")
+		if (a == "bot") != (c == "bot") {
+			return a != "bot"
+		}
+		return a < c
+	})
+	return containers, nil
+}
+
+func (b *Bot) handleAdminContainers(w http.ResponseWriter, r *http.Request, userID int64) {
+	if b.config.AdminTelegramID == 0 || userID != b.config.AdminTelegramID {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	switch r.Method {
+	case http.MethodGet:
+		containers, err := b.listProjectContainers(r.Context(), b.dockerClient())
+		if err != nil {
+			http.Error(w, "could not inspect Docker containers", http.StatusBadGateway)
+			return
+		}
+		type item struct {
+			Service string `json:"service"`
+			Name    string `json:"name"`
+			State   string `json:"state"`
+		}
+		items := make([]item, 0, len(containers))
+		for _, c := range containers {
+			name := strings.TrimPrefix(strings.Join(c.Names, ", "), "/")
+			items = append(items, item{Service: c.Labels["com.docker.compose.service"], Name: name, State: c.State})
+		}
+		writeJSON(w, map[string]any{"project": b.config.ComposeProject, "containers": items})
+	case http.MethodPost:
+		action := strings.TrimPrefix(r.URL.Path, "/api/admin/containers/")
+		if action != "restart" && action != "delete" {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		w.WriteHeader(http.StatusAccepted)
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+			defer cancel()
+			count, err := b.manageProjectContainers(ctx, action)
+			if err != nil {
+				log.Printf("admin container %s failed after %d: %v", action, count, err)
+				return
+			}
+			log.Printf("admin container %s completed: %d containers", action, count)
+		}()
+	default:
+		w.Header().Set("Allow", "GET, POST")
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
 }
 
 func (b *Bot) sendMessageWithKeyboard(ctx context.Context, chatID int64, message string, keyboard adminMarkup) error {
