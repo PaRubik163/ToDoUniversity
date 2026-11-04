@@ -7,6 +7,7 @@ import (
 	"log"
 	"mime"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -110,6 +111,10 @@ func (h *authHandler) refresh(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", 405)
 		return
 	}
+	if !validCookieRequestOrigin(r, h.trustProxyHeaders) {
+		http.Error(w, "invalid request origin", http.StatusForbidden)
+		return
+	}
 	c, err := r.Cookie("refresh_token")
 	if err != nil {
 		http.Error(w, "refresh token required", 401)
@@ -121,7 +126,7 @@ func (h *authHandler) refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Cache-Control", "no-store")
-	setRefreshCookie(w, r, p.RefreshToken, 30*24*3600)
+	setRefreshCookie(w, r, p.RefreshToken, 30*24*3600, h.trustProxyHeaders)
 	p.RefreshToken = ""
 	writeJSON(w, p)
 }
@@ -131,13 +136,17 @@ func (h *authHandler) logout(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", 405)
 		return
 	}
+	if !validCookieRequestOrigin(r, h.trustProxyHeaders) {
+		http.Error(w, "invalid request origin", http.StatusForbidden)
+		return
+	}
 	if c, err := r.Cookie("refresh_token"); err == nil {
 		if err := h.auth.Logout(r.Context(), c.Value); err != nil {
 			http.Error(w, "could not revoke token", 500)
 			return
 		}
 	}
-	setRefreshCookie(w, r, "", -1)
+	setRefreshCookie(w, r, "", -1, h.trustProxyHeaders)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -182,13 +191,13 @@ func (h *authHandler) linkCode(w http.ResponseWriter, r *http.Request) {
 
 func (h *authHandler) respond(w http.ResponseWriter, r *http.Request, p service.TokenPair) {
 	w.Header().Set("Cache-Control", "no-store")
-	setRefreshCookie(w, r, p.RefreshToken, 30*24*3600)
+	setRefreshCookie(w, r, p.RefreshToken, 30*24*3600, h.trustProxyHeaders)
 	p.RefreshToken = ""
 	writeJSON(w, p)
 }
 
-func setRefreshCookie(w http.ResponseWriter, r *http.Request, value string, maxAge int) {
-	secure := r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
+func setRefreshCookie(w http.ResponseWriter, r *http.Request, value string, maxAge int, trustProxyHeaders bool) {
+	secure := r.TLS != nil || (trustProxyHeaders && strings.EqualFold(strings.TrimSpace(r.Header.Get("X-Forwarded-Proto")), "https"))
 	sameSite := http.SameSiteLaxMode
 	if secure {
 		// The Mini App runs in a Telegram WebView, which treats the site as a
@@ -199,4 +208,28 @@ func setRefreshCookie(w http.ResponseWriter, r *http.Request, value string, maxA
 		Name: "refresh_token", Value: value, Path: "/api/auth", HttpOnly: true,
 		Secure: secure, SameSite: sameSite, MaxAge: maxAge,
 	})
+}
+
+func validCookieRequestOrigin(r *http.Request, trustProxyHeaders bool) bool {
+	origin := strings.TrimSpace(r.Header.Get("Origin"))
+	if origin == "" {
+		if referer := strings.TrimSpace(r.Header.Get("Referer")); referer != "" {
+			parsed, err := url.Parse(referer)
+			if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+				return false
+			}
+			origin = parsed.Scheme + "://" + parsed.Host
+		} else {
+			return false
+		}
+	}
+	parsed, err := url.Parse(origin)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" || parsed.User != nil || parsed.Path != "" && parsed.Path != "/" || parsed.RawQuery != "" || parsed.Fragment != "" {
+		return false
+	}
+	scheme := "http"
+	if r.TLS != nil || (trustProxyHeaders && strings.EqualFold(strings.TrimSpace(r.Header.Get("X-Forwarded-Proto")), "https")) {
+		scheme = "https"
+	}
+	return strings.EqualFold(parsed.Scheme, scheme) && strings.EqualFold(parsed.Host, r.Host)
 }

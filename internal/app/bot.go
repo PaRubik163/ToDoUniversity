@@ -417,13 +417,12 @@ func (b *Bot) reminderLoop(ctx context.Context) {
 func (b *Bot) sendDueEventReminders(ctx context.Context, now time.Time) {
 	rows, err := b.db.QueryContext(ctx, `
 		SELECT id, chat_id, title, event_at
-		FROM calendar_events
-		WHERE is_completed = FALSE AND reminder_hours > 0
+		FROM calendar_events e
+		LEFT JOIN calendar_event_reminder_log l ON l.event_id = e.id
+		WHERE e.is_completed = FALSE AND e.reminder_hours > 0
 		  AND event_at - reminder_hours * interval '1 hour' <= $1
-		  AND event_at > $1
-		  AND NOT EXISTS (
-			  SELECT 1 FROM calendar_event_reminder_log sent WHERE sent.event_id = calendar_events.id
-		  )`, now)
+		  AND (event_at > $1 OR l.status = 'pending')
+		  AND (l.event_id IS NULL OR (l.status = 'pending' AND l.next_attempt_at <= $1 AND (l.locked_until IS NULL OR l.locked_until < $1)))`, now)
 	if err != nil {
 		log.Printf("event reminder query: %v", err)
 		return
@@ -437,13 +436,22 @@ func (b *Bot) sendDueEventReminders(ctx context.Context, now time.Time) {
 			log.Printf("scan event reminder: %v", err)
 			continue
 		}
+		claimed, err := b.claimEventReminder(ctx, id, now)
+		if err != nil {
+			log.Printf("claim event reminder: %v", err)
+			continue
+		}
+		if !claimed {
+			continue
+		}
 		message := fmt.Sprintf("📅 Напоминание о событии\n%s\n%s", title, eventAt.In(b.config.Timezone).Format("02.01.2006 в 15:04"))
 		if err := b.sendMessage(ctx, chatID, message); err != nil {
 			log.Printf("send event reminder: %v", err)
+			b.retryEventReminder(ctx, id, err)
 			continue
 		}
-		if _, err := b.db.ExecContext(ctx, `INSERT INTO calendar_event_reminder_log (event_id) VALUES ($1) ON CONFLICT DO NOTHING`, id); err != nil {
-			log.Printf("log event reminder: %v", err)
+		if _, err := b.db.ExecContext(ctx, `UPDATE calendar_event_reminder_log SET status='sent', sent_at=now(), locked_until=NULL, last_error=NULL WHERE event_id=$1`, id); err != nil {
+			log.Printf("mark event reminder sent: %v", err)
 		}
 	}
 	if err := rows.Err(); err != nil {
@@ -452,19 +460,22 @@ func (b *Bot) sendDueEventReminders(ctx context.Context, now time.Time) {
 }
 
 func (b *Bot) sendDueReminders(ctx context.Context, hour, minute int) {
+	b.sendPendingHomeworkRetries(ctx)
 	rows, err := b.db.QueryContext(ctx, `
 		SELECT h.id, h.chat_id, h.subject, h.title, h.deadline,
 			array_to_json(COALESCE(h.reminder_days, ARRAY[7]::smallint[]))::text
 		FROM homework h
 		LEFT JOIN user_settings s ON s.chat_id = h.chat_id
 		LEFT JOIN homework_status hs ON hs.homework_id = h.id
+		LEFT JOIN reminder_log rl ON rl.homework_id = h.id AND rl.reminder_date = (now() AT TIME ZONE $3)::date AND rl.reminder_time = make_time($1, $2, 0)
 		WHERE EXISTS (
 			SELECT 1 FROM unnest(COALESCE(s.reminder_times, ARRAY['09:00'::TIME])) AS configured(time_value)
 			WHERE configured.time_value = make_time($1, $2, 0)
 		  )
 		  AND COALESCE(hs.is_completed, FALSE) = FALSE
 		  AND h.deadline < now() + interval '21 days'
-		ORDER BY h.deadline`, hour, minute)
+		  AND (rl.homework_id IS NULL OR (rl.status = 'pending' AND rl.next_attempt_at <= now() AND (rl.locked_until IS NULL OR rl.locked_until < now())))
+		ORDER BY h.deadline`, hour, minute, b.config.Timezone.String())
 	if err != nil {
 		log.Printf("reminder query: %v", err)
 		return
@@ -498,37 +509,133 @@ func (b *Bot) sendDueReminders(ctx context.Context, hour, minute int) {
 				continue
 			}
 		}
-		result, err := b.db.ExecContext(ctx, `INSERT INTO reminder_log (homework_id, reminder_date, reminder_time) VALUES ($1, $2, $3::time) ON CONFLICT DO NOTHING`, item.ID, today, reminderTime)
+		claimed, err := b.claimHomeworkReminder(ctx, item.ID, today, reminderTime)
 		if err != nil {
-			log.Print(err)
+			log.Printf("claim homework reminder: %v", err)
 			continue
 		}
-		added, _ := result.RowsAffected()
-		if added == 0 {
+		if !claimed {
 			continue
 		}
-		word := "дней"
-		if days == 1 {
-			word = "день"
-		} else if days >= 2 && days <= 4 {
-			word = "дня"
-		}
-		message := fmt.Sprintf("⏰ Напоминание\n%s — %s\nДо дедлайна осталось %d %s (%s).", item.Subject, item.Title, days, word, item.Deadline.In(b.config.Timezone).Format("02.01.2006"))
-		if days < 0 {
-			overdueDays := -days
-			overdueWord := "дней"
-			if overdueDays == 1 {
-				overdueWord = "день"
-			} else if overdueDays >= 2 && overdueDays <= 4 {
-				overdueWord = "дня"
-			}
-			message = fmt.Sprintf("⚠️ Дедлайн истек %d %s назад\n%s — %s (дедлайн: %s).", overdueDays, overdueWord, item.Subject, item.Title, item.Deadline.In(b.config.Timezone).Format("02.01.2006"))
-		} else if days == 0 {
-			message = fmt.Sprintf("⏰ Дедлайн сегодня!\n%s — %s", item.Subject, item.Title)
-		}
+		message := homeworkReminderMessage(item, time.Now().In(b.config.Timezone), b.config.Timezone)
 		if err := b.sendMessage(ctx, chatID, message); err != nil {
 			log.Printf("send reminder: %v", err)
+			b.retryHomeworkReminder(ctx, item.ID, today, reminderTime, err)
+			continue
 		}
+		if _, err := b.db.ExecContext(ctx, `UPDATE reminder_log SET status='sent', sent_at=now(), locked_until=NULL, last_error=NULL WHERE homework_id=$1 AND reminder_date=$2 AND reminder_time=$3::time`, item.ID, today, reminderTime); err != nil {
+			log.Printf("mark homework reminder sent: %v", err)
+		}
+	}
+}
+
+func (b *Bot) sendPendingHomeworkRetries(ctx context.Context) {
+	rows, err := b.db.QueryContext(ctx, `
+		SELECT rl.homework_id, rl.reminder_date, to_char(rl.reminder_time, 'HH24:MI'), h.chat_id, h.subject, h.title, h.deadline
+		FROM reminder_log rl
+		JOIN homework h ON h.id=rl.homework_id
+		LEFT JOIN homework_status hs ON hs.homework_id=h.id
+		WHERE rl.status='pending' AND rl.next_attempt_at<=now() AND (rl.locked_until IS NULL OR rl.locked_until<now())
+		  AND COALESCE(hs.is_completed,FALSE)=FALSE
+		ORDER BY rl.next_attempt_at LIMIT 100`)
+	if err != nil {
+		log.Printf("pending homework reminder query: %v", err)
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id, chatID int64
+		var date time.Time
+		var reminderTime string
+		var item homework
+		if err := rows.Scan(&id, &date, &reminderTime, &chatID, &item.Subject, &item.Title, &item.Deadline); err != nil {
+			log.Printf("scan pending homework reminder: %v", err)
+			continue
+		}
+		dateValue := date.Format("2006-01-02")
+		claimed, err := b.claimHomeworkReminder(ctx, id, dateValue, reminderTime)
+		if err != nil || !claimed {
+			if err != nil {
+				log.Printf("claim pending homework reminder: %v", err)
+			}
+			continue
+		}
+		message := homeworkReminderMessage(item, time.Now().In(b.config.Timezone), b.config.Timezone)
+		if err := b.sendMessage(ctx, chatID, message); err != nil {
+			log.Printf("retry homework reminder: %v", err)
+			b.retryHomeworkReminder(ctx, id, dateValue, reminderTime, err)
+			continue
+		}
+		if _, err := b.db.ExecContext(ctx, `UPDATE reminder_log SET status='sent', sent_at=now(), locked_until=NULL, last_error=NULL WHERE homework_id=$1 AND reminder_date=$2 AND reminder_time=$3::time`, id, dateValue, reminderTime); err != nil {
+			log.Printf("mark retried homework reminder sent: %v", err)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		log.Printf("iterate pending homework reminders: %v", err)
+	}
+}
+
+func homeworkReminderMessage(item homework, now time.Time, timezone *time.Location) string {
+	days := domain.CalendarDays(now, item.Deadline.In(timezone), timezone)
+	word := "дней"
+	if days == 1 {
+		word = "день"
+	} else if days >= 2 && days <= 4 {
+		word = "дня"
+	}
+	message := fmt.Sprintf("⏰ Напоминание\n%s — %s\nДо дедлайна осталось %d %s (%s).", item.Subject, item.Title, days, word, item.Deadline.In(timezone).Format("02.01.2006"))
+	if days < 0 {
+		overdueDays := -days
+		overdueWord := "дней"
+		if overdueDays == 1 {
+			overdueWord = "день"
+		} else if overdueDays >= 2 && overdueDays <= 4 {
+			overdueWord = "дня"
+		}
+		message = fmt.Sprintf("⚠️ Дедлайн истек %d %s назад\n%s — %s (дедлайн: %s).", overdueDays, overdueWord, item.Subject, item.Title, item.Deadline.In(timezone).Format("02.01.2006"))
+	} else if days == 0 {
+		message = fmt.Sprintf("⏰ Дедлайн сегодня!\n%s — %s", item.Subject, item.Title)
+	}
+	return message
+}
+
+func (b *Bot) claimHomeworkReminder(ctx context.Context, id int64, date, timeValue string) (bool, error) {
+	_, err := b.db.ExecContext(ctx, `INSERT INTO reminder_log (homework_id, reminder_date, reminder_time, status) VALUES ($1,$2,$3::time,'pending') ON CONFLICT DO NOTHING`, id, date, timeValue)
+	if err != nil {
+		return false, err
+	}
+	result, err := b.db.ExecContext(ctx, `UPDATE reminder_log SET attempts=attempts+1, locked_until=now()+interval '2 minutes' WHERE homework_id=$1 AND reminder_date=$2 AND reminder_time=$3::time AND status='pending' AND next_attempt_at<=now() AND (locked_until IS NULL OR locked_until<now())`, id, date, timeValue)
+	if err != nil {
+		return false, err
+	}
+	n, err := result.RowsAffected()
+	return n == 1, err
+}
+
+func (b *Bot) claimEventReminder(ctx context.Context, id int64, now time.Time) (bool, error) {
+	_, err := b.db.ExecContext(ctx, `INSERT INTO calendar_event_reminder_log (event_id, status) VALUES ($1,'pending') ON CONFLICT DO NOTHING`, id)
+	if err != nil {
+		return false, err
+	}
+	result, err := b.db.ExecContext(ctx, `UPDATE calendar_event_reminder_log SET attempts=attempts+1, locked_until=$2+interval '2 minutes' WHERE event_id=$1 AND status='pending' AND next_attempt_at<=$2 AND (locked_until IS NULL OR locked_until<$2)`, id, now)
+	if err != nil {
+		return false, err
+	}
+	n, err := result.RowsAffected()
+	return n == 1, err
+}
+
+func (b *Bot) retryHomeworkReminder(ctx context.Context, id int64, date, timeValue string, sendErr error) {
+	_, err := b.db.ExecContext(ctx, `UPDATE reminder_log SET next_attempt_at=now()+(LEAST(3600, (60 * power(2, LEAST(attempts-1, 6)))::integer) * interval '1 second'), locked_until=NULL, last_error=LEFT($4,1000) WHERE homework_id=$1 AND reminder_date=$2 AND reminder_time=$3::time AND status='pending'`, id, date, timeValue, sendErr.Error())
+	if err != nil {
+		log.Printf("schedule homework reminder retry: %v", err)
+	}
+}
+
+func (b *Bot) retryEventReminder(ctx context.Context, id int64, sendErr error) {
+	_, err := b.db.ExecContext(ctx, `UPDATE calendar_event_reminder_log SET next_attempt_at=now()+(LEAST(3600, (60 * power(2, LEAST(attempts-1, 6)))::integer) * interval '1 second'), locked_until=NULL, last_error=LEFT($2,1000) WHERE event_id=$1 AND status='pending'`, id, sendErr.Error())
+	if err != nil {
+		log.Printf("schedule event reminder retry: %v", err)
 	}
 }
 
