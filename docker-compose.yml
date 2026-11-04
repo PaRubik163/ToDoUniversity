@@ -29,6 +29,8 @@ services:
   bot:
     build:
       context: .
+    # Docker socket access is required by the admin container controls.
+    user: "0:0"
     restart: unless-stopped
     environment:
       ADMIN_TELEGRAM_ID: ${ADMIN_TELEGRAM_ID:-0}

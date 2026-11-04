@@ -161,7 +161,8 @@ func (b *Bot) handleAdminContainers(w http.ResponseWriter, r *http.Request, user
 	case http.MethodGet:
 		containers, err := b.listProjectContainers(r.Context(), b.dockerClient())
 		if err != nil {
-			http.Error(w, "could not inspect Docker containers", http.StatusBadGateway)
+			log.Printf("inspect Docker containers for admin panel: %v", err)
+			http.Error(w, "Не удалось получить список контейнеров из Docker: "+err.Error(), http.StatusBadGateway)
 			return
 		}
 		type item struct {
