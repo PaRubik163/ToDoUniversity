@@ -74,28 +74,44 @@ func (b *Bot) Run(ctx context.Context) error {
 		log.Println("MINI_APP_URL not set: skipping Telegram menu button, mini app will only be reachable directly by URL")
 	}
 
-	go b.reminderLoop(ctx)
-	serverErrors := make(chan error, 1)
-	go func() { serverErrors <- b.startWebServer(ctx, ":"+b.config.Port) }()
-
-	pollErrors := make(chan error, 1)
-	go func() { pollErrors <- b.poll(ctx) }()
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	type workerResult struct {
+		name string
+		err  error
+	}
+	results := make(chan workerResult, 3)
+	go func() {
+		b.reminderLoop(runCtx)
+		results <- workerResult{name: "reminders"}
+	}()
+	go func() { results <- workerResult{name: "web server", err: b.startWebServer(runCtx, ":"+b.config.Port)} }()
+	go func() { results <- workerResult{name: "telegram polling", err: b.poll(runCtx)} }()
 
 	log.Println("bot is running")
-	select {
-	case <-ctx.Done():
-		return nil
-	case err := <-serverErrors:
-		if ctx.Err() != nil || err == nil {
-			return nil
+	parentDone := ctx.Done()
+	completed := 0
+	var runErr error
+	for completed < 3 {
+		select {
+		case <-parentDone:
+			parentDone = nil
+			cancel()
+		case result := <-results:
+			completed++
+			if result.err != nil && !errors.Is(result.err, context.Canceled) && runErr == nil {
+				runErr = fmt.Errorf("%s: %w", result.name, result.err)
+			}
+			if result.err != nil || ctx.Err() == nil {
+				cancel()
+			}
 		}
-		return fmt.Errorf("web server: %w", err)
-	case err := <-pollErrors:
-		if ctx.Err() != nil || err == nil {
-			return nil
-		}
-		return fmt.Errorf("telegram polling: %w", err)
 	}
+	b.client.CloseIdleConnections()
+	if ctx.Err() != nil {
+		return nil
+	}
+	return runErr
 }
 
 func (b *Bot) poll(ctx context.Context) error {

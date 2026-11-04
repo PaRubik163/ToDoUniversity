@@ -85,7 +85,12 @@ func (b *Bot) startWebServer(ctx context.Context, addr string) error {
 		<-ctx.Done()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		_ = server.Shutdown(shutdownCtx)
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			log.Printf("graceful web server shutdown: %v; closing active connections", err)
+			if closeErr := server.Close(); closeErr != nil {
+				log.Printf("force web server close: %v", closeErr)
+			}
+		}
 	}()
 
 	log.Printf("mini app server listening on %s", addr)
