@@ -9,6 +9,8 @@
 .container-name { overflow-wrap: anywhere; font-weight: 700; }
 .container-state { color: var(--muted); font-size: 12px; text-transform: uppercase; }
 .container-state.running { color: #4f7a41; }
+.container-controls { display: flex; align-items: center; gap: 12px; }
+.container-restart { flex: 0 0 auto; min-height: 36px; padding: 7px 10px; }
 .admin-actions { display: flex; flex-wrap: wrap; gap: 9px; }
 .admin-actions .button { min-height: 42px; }
 .admin-actions .danger { border: 1px solid #b3463d; background: #b3463d; color: white; }
@@ -16,4 +18,4 @@
 .admin-actions button:disabled { cursor: wait; opacity: .6; }
 .admin-note { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
 .admin-message { min-height: 18px; margin: 0; font-size: 13px; }
-@media (max-width: 520px) { .admin-app { padding-top: 20px; } .admin-app .header { align-items: center; } .admin-app .header h1 { font-size: 27px; } .admin-actions { display: grid; } }
+@media (max-width: 520px) { .admin-app { padding-top: 20px; } .admin-app .header { align-items: center; } .admin-app .header h1 { font-size: 27px; } .admin-actions { display: grid; } .container-row { align-items: flex-start; flex-direction: column; } .container-controls { width: 100%; justify-content: space-between; } }

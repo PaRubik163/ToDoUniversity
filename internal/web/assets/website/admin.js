@@ -55,10 +55,29 @@
         const state = document.createElement("span");
         state.className = "container-state" + (container.state === "running" ? " running" : "");
         state.textContent = container.state;
-        row.append(name, state);
+        const controls = document.createElement("div");
+        controls.className = "container-controls";
+        const restart = document.createElement("button");
+        restart.className = "button secondary container-restart";
+        restart.type = "button";
+        restart.textContent = "Перезапустить";
+        restart.addEventListener("click", () => restartContainer(container, restart));
+        controls.append(state, restart);
+        row.append(name, controls);
         list.append(row);
       });
     } catch (error) { message.textContent = error.message; }
+  }
+
+  async function restartContainer(container, button) {
+    button.disabled = true;
+    message.textContent = "Перезапуск контейнера " + (container.service || container.name) + "…";
+    try {
+      await api("/api/admin/containers/" + encodeURIComponent(container.id) + "/restart", { method: "POST" });
+      message.textContent = "Перезапуск запущен: " + (container.service || container.name) + ".";
+      setTimeout(loadContainers, 5000);
+    } catch (error) { message.textContent = error.message; }
+    finally { button.disabled = false; }
   }
 
   async function perform(action) {

@@ -112,6 +112,38 @@ func (b *Bot) manageProjectContainers(ctx context.Context, action string) (int, 
 	return completed, nil
 }
 
+func (b *Bot) restartProjectContainer(ctx context.Context, id string) error {
+	containers, err := b.listProjectContainers(ctx, b.dockerClient())
+	if err != nil {
+		return err
+	}
+	for _, container := range containers {
+		if container.ID == id {
+			return b.restartContainer(ctx, container.ID)
+		}
+	}
+	return fmt.Errorf("container is not part of the configured Compose project")
+}
+
+func (b *Bot) restartContainer(ctx context.Context, id string) error {
+	client := b.dockerClient()
+	path := "/containers/" + url.PathEscape(id) + "/restart?t=10"
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, "http://docker"+path, nil)
+	if err != nil {
+		return err
+	}
+	response, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	body, _ := io.ReadAll(io.LimitReader(response.Body, 2048))
+	response.Body.Close()
+	if response.StatusCode/100 != 2 {
+		return fmt.Errorf("Docker API %s: %s", response.Status, strings.TrimSpace(string(body)))
+	}
+	return nil
+}
+
 func (b *Bot) dockerClient() *http.Client {
 	client := &http.Client{Timeout: 30 * time.Second, Transport: &http.Transport{DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 		return (&net.Dialer{}).DialContext(ctx, "unix", b.config.DockerSocket)
@@ -166,6 +198,7 @@ func (b *Bot) handleAdminContainers(w http.ResponseWriter, r *http.Request, user
 			return
 		}
 		type item struct {
+			ID      string `json:"id"`
 			Service string `json:"service"`
 			Name    string `json:"name"`
 			State   string `json:"state"`
@@ -173,12 +206,19 @@ func (b *Bot) handleAdminContainers(w http.ResponseWriter, r *http.Request, user
 		items := make([]item, 0, len(containers))
 		for _, c := range containers {
 			name := strings.TrimPrefix(strings.Join(c.Names, ", "), "/")
-			items = append(items, item{Service: c.Labels["com.docker.compose.service"], Name: name, State: c.State})
+			items = append(items, item{ID: c.ID, Service: c.Labels["com.docker.compose.service"], Name: name, State: c.State})
 		}
 		writeJSON(w, map[string]any{"project": b.config.ComposeProject, "containers": items})
 	case http.MethodPost:
-		action := strings.TrimPrefix(r.URL.Path, "/api/admin/containers/")
-		if action != "restart" && action != "delete" {
+		path := strings.TrimPrefix(r.URL.Path, "/api/admin/containers/")
+		parts := strings.Split(path, "/")
+		action := ""
+		containerID := ""
+		if len(parts) == 1 && (parts[0] == "restart" || parts[0] == "delete") {
+			action = parts[0]
+		} else if len(parts) == 2 && parts[0] != "" && parts[1] == "restart" {
+			action, containerID = "restart-one", parts[0]
+		} else {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
@@ -186,7 +226,15 @@ func (b *Bot) handleAdminContainers(w http.ResponseWriter, r *http.Request, user
 		go func() {
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 			defer cancel()
-			count, err := b.manageProjectContainers(ctx, action)
+			count, err := 0, error(nil)
+			if action == "restart-one" {
+				err = b.restartProjectContainer(ctx, containerID)
+				if err == nil {
+					count = 1
+				}
+			} else {
+				count, err = b.manageProjectContainers(ctx, action)
+			}
 			if err != nil {
 				log.Printf("admin container %s failed after %d: %v", action, count, err)
 				return
@@ -197,6 +245,15 @@ func (b *Bot) handleAdminContainers(w http.ResponseWriter, r *http.Request, user
 		w.Header().Set("Allow", "GET, POST")
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+func (b *Bot) handleAdminAccess(w http.ResponseWriter, r *http.Request, userID int64) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	writeJSON(w, map[string]bool{"is_admin": b.config.AdminTelegramID != 0 && userID == b.config.AdminTelegramID})
 }
 
 func (b *Bot) sendMessageWithKeyboard(ctx context.Context, chatID int64, message string, keyboard adminMarkup) error {

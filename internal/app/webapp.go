@@ -77,6 +77,7 @@ func (b *Bot) startWebServer(ctx context.Context, addr string) error {
 	mux.HandleFunc("/api/analytics", b.withAuth(b.handleAnalytics, userService, authService))
 	mux.HandleFunc("/api/admin/containers", b.withAuth(b.handleAdminContainers, userService, authService))
 	mux.HandleFunc("/api/admin/containers/", b.withAuth(b.handleAdminContainers, userService, authService))
+	mux.HandleFunc("/api/admin/access", b.withAuth(b.handleAdminAccess, userService, authService))
 
 	server := &http.Server{
 		Addr:              addr,
