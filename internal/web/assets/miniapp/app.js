@@ -229,10 +229,12 @@
   const monthChartTitleEl = document.getElementById("month-chart-title");
   const weekChartEl = document.getElementById("week-chart");
   const monthChartEl = document.getElementById("month-chart");
-  const analyticsDayPanelEl = document.getElementById("analytics-day-panel");
+  const analyticsDayDialogEl = document.getElementById("analytics-day-dialog");
   const analyticsDayTitleEl = document.getElementById("analytics-day-title");
   const analyticsDayListEl = document.getElementById("analytics-day-list");
   const analyticsDayEmptyEl = document.getElementById("analytics-day-empty");
+  document.getElementById("analytics-day-close").addEventListener("click", function () { analyticsDayDialogEl.close(); });
+  analyticsDayDialogEl.addEventListener("click", function (event) { if (event.target === analyticsDayDialogEl) analyticsDayDialogEl.close(); });
 
   const formEl = document.getElementById("add-form");
   const formTitleEl = document.getElementById("form-title");
@@ -803,7 +805,7 @@
     monthChartTitleEl.textContent = t("monthGraphTitle", { month: formatMonth(data.month) });
     renderLineChart(weekChartEl, data.week_days || [], true);
     renderLineChart(monthChartEl, data.month_days || [], false);
-    analyticsDayPanelEl.classList.add("hidden");
+    if (analyticsDayDialogEl.open) analyticsDayDialogEl.close();
   }
 
   function fetchAnalytics() {
@@ -935,7 +937,6 @@
     apiFetch("/api/analytics/day?date=" + encodeURIComponent(date)).then(function (items) {
       analyticsDayTitleEl.textContent = t("dayTasksTitle", { date: formatDate(date) });
       analyticsDayListEl.replaceChildren();
-      analyticsDayPanelEl.classList.remove("hidden");
       analyticsDayEmptyEl.classList.toggle("hidden", items.length > 0);
       analyticsDayEmptyEl.textContent = t("noDayTasks");
       items.forEach(function (item) {
@@ -954,7 +955,7 @@
         });
         actions.appendChild(undo); li.append(body, actions); analyticsDayListEl.appendChild(li);
       });
-      analyticsDayPanelEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      if (!analyticsDayDialogEl.open) analyticsDayDialogEl.showModal();
     }).catch(function (err) { setStatus(t("loadAnalyticsError") + err.message); });
   }
 
