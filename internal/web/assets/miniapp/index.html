@@ -107,7 +107,6 @@
 
   <nav class="sections" aria-label="Разделы заданий" data-i18n-aria="sectionsAria">
     <button class="section-button active" type="button" data-section="uncompleted" data-i18n="uncompleted">Несделанные</button>
-    <button class="section-button" type="button" data-section="completed" data-i18n="archive">Архив</button>
     <button class="section-button" type="button" data-section="overdue" data-i18n="overdue">Просроченные</button>
     <button class="section-button" type="button" data-section="analytics" data-i18n="analytics">Аналитика</button>
     <button class="section-button" type="button" data-section="calendar" data-i18n="calendar">Постоянные</button>
@@ -150,6 +149,11 @@
     <section class="chart-panel">
       <h2 id="month-chart-title">За месяц</h2>
       <div class="chart-scroll"><div id="month-chart" class="line-chart line-chart--month"></div></div>
+    </section>
+    <section id="analytics-day-panel" class="chart-panel analytics-day-panel hidden" aria-live="polite">
+      <h2 id="analytics-day-title"></h2>
+      <ul id="analytics-day-list" class="list"></ul>
+      <p id="analytics-day-empty" class="empty hidden"></p>
     </section>
   </section>
 

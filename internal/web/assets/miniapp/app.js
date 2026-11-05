@@ -28,7 +28,7 @@
       dueToday: "срок сегодня", daysLeft: "осталось {days} {unit}", dayUnit: "дней", dayUnitOne: "день", dayUnitFew: "дня",
       weekRange: "Неделя: {from} — {to}", monthGraphTitle: "Выполнено по дням — {month}",
       weekChartAria: "Выполненные задания за текущую неделю", monthChartAria: "Выполненные задания за выбранный месяц",
-      chartCount: "{date}: {count}", eventHourUnit: "\u0447\u0430\u0441.",
+      chartCount: "{date}: {count}", dayTasksTitle: "Выполнено {date}", noDayTasks: "В этот день ничего не выполнено.", completedTask: "Задание", completedEvent: "Событие", restoreTask: "Вернуть в несделанные", eventHourUnit: "\u0447\u0430\u0441.",
       calendar: "\u041f\u043e\u0441\u0442\u043e\u044f\u043d\u043d\u044b\u0435", newEvent: "\u041d\u043e\u0432\u043e\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u0435", editEvent: "\u0418\u0437\u043c\u0435\u043d\u0438\u0442\u044c \u0441\u043e\u0431\u044b\u0442\u0438\u0435", eventTitle: "\u0421\u043e\u0431\u044b\u0442\u0438\u0435", eventDateTime: "\u0414\u0430\u0442\u0430 \u0438 \u0432\u0440\u0435\u043c\u044f", remindHours: "\u041d\u0430\u043f\u043e\u043c\u043d\u0438\u0442\u044c \u0437\u0430 (\u0447\u0430\u0441\u043e\u0432)", eventsForDay: "\u0421\u043e\u0431\u044b\u0442\u0438\u044f \u0434\u043d\u044f", addEvent: "+ \u0421\u043e\u0431\u044b\u0442\u0438\u0435", noEvents: "\u041d\u0430 \u044d\u0442\u0443 \u0434\u0430\u0442\u0443 \u0441\u043e\u0431\u044b\u0442\u0438\u0439 \u043d\u0435\u0442.", eventDelete: "\u0423\u0434\u0430\u043b\u0438\u0442\u044c \u044d\u0442\u043e \u0441\u043e\u0431\u044b\u0442\u0438\u0435?", eventError: "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c: ", eventDone: "\u0413\u043e\u0442\u043e\u0432\u043e", eventUndo: "\u0412\u0435\u0440\u043d\u0443\u0442\u044c", noReminder: "\u0411\u0435\u0437 \u043d\u0430\u043f\u043e\u043c\u0438\u043d\u0430\u043d\u0438\u044f"
     },
     en: {
@@ -57,7 +57,7 @@
       dueToday: "due today", daysLeft: "{days} {unit} left", dayUnit: "days", dayUnitOne: "day", dayUnitFew: "days",
       weekRange: "Week: {from} — {to}", monthGraphTitle: "Completed by day — {month}",
       weekChartAria: "Tasks completed this week", monthChartAria: "Tasks completed in selected month",
-      chartCount: "{date}: {count}", eventHourUnit: "h", calendar: "Calendar", newEvent: "New event", editEvent: "Edit event", eventTitle: "Event", eventDateTime: "Date and time", remindHours: "Remind me (hours before)", eventsForDay: "Events for this day", addEvent: "+ Event", noEvents: "No events on this date.", eventDelete: "Delete this event?", eventError: "Could not save event: ", eventDone: "Done", eventUndo: "Undo", noReminder: "No reminder"
+      chartCount: "{date}: {count}", dayTasksTitle: "Completed {date}", noDayTasks: "Nothing was completed on this day.", completedTask: "Task", completedEvent: "Event", restoreTask: "Move back to to do", eventHourUnit: "h", calendar: "Calendar", newEvent: "New event", editEvent: "Edit event", eventTitle: "Event", eventDateTime: "Date and time", remindHours: "Remind me (hours before)", eventsForDay: "Events for this day", addEvent: "+ Event", noEvents: "No events on this date.", eventDelete: "Delete this event?", eventError: "Could not save event: ", eventDone: "Done", eventUndo: "Undo", noReminder: "No reminder"
     },
     zh: {
       appTitle: "任务", settingsAria: "设置", addTaskAria: "添加任务", settingsTitle: "设置", adminPanel: "管理面板", reminderDaysLabel: "提前提醒",
@@ -229,6 +229,10 @@
   const monthChartTitleEl = document.getElementById("month-chart-title");
   const weekChartEl = document.getElementById("week-chart");
   const monthChartEl = document.getElementById("month-chart");
+  const analyticsDayPanelEl = document.getElementById("analytics-day-panel");
+  const analyticsDayTitleEl = document.getElementById("analytics-day-title");
+  const analyticsDayListEl = document.getElementById("analytics-day-list");
+  const analyticsDayEmptyEl = document.getElementById("analytics-day-empty");
 
   const formEl = document.getElementById("add-form");
   const formTitleEl = document.getElementById("form-title");
@@ -799,6 +803,7 @@
     monthChartTitleEl.textContent = t("monthGraphTitle", { month: formatMonth(data.month) });
     renderLineChart(weekChartEl, data.week_days || [], true);
     renderLineChart(monthChartEl, data.month_days || [], false);
+    analyticsDayPanelEl.classList.add("hidden");
   }
 
   function fetchAnalytics() {
@@ -807,7 +812,7 @@
   }
 
   function loadAnalytics() {
-    fetchAnalytics()
+    return fetchAnalytics()
       .then(renderAnalytics)
       .catch(function (err) { setStatus(t("loadAnalyticsError") + err.message); });
   }
@@ -854,7 +859,7 @@
     const max = Math.max(1, ...days.map(function (day) { return day.count; }));
     const svg = document.createElementNS(namespace, "svg");
     svg.setAttribute("viewBox", "0 0 " + width + " " + height);
-    svg.setAttribute("role", "img");
+    svg.setAttribute("role", "group");
     svg.setAttribute("aria-label", t(showWeekday ? "weekChartAria" : "monthChartAria"));
     if (showWeekday) {
       svg.setAttribute("preserveAspectRatio", "none");
@@ -895,11 +900,16 @@
       const circle = document.createElementNS(namespace, "circle");
       circle.setAttribute("cx", point.x);
       circle.setAttribute("cy", point.y);
-      circle.setAttribute("r", showWeekday ? 4 : 3);
+      circle.setAttribute("r", showWeekday ? 6 : 5);
       circle.setAttribute("class", "chart-point");
+      circle.setAttribute("role", "button");
+      circle.setAttribute("tabindex", "0");
+      circle.setAttribute("aria-label", t("chartCount", { date: formatDate(point.day.date), count: point.day.count }));
       const title = document.createElementNS(namespace, "title");
       title.textContent = t("chartCount", { date: formatDate(point.day.date), count: point.day.count });
       circle.appendChild(title);
+      circle.addEventListener("click", function () { loadAnalyticsDay(point.day.date); });
+      circle.addEventListener("keydown", function (event) { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); loadAnalyticsDay(point.day.date); } });
       svg.appendChild(circle);
 
       const dateParts = point.day.date.split("-").map(Number);
@@ -919,6 +929,33 @@
     });
 
     container.replaceChildren(svg);
+  }
+
+  function loadAnalyticsDay(date) {
+    apiFetch("/api/analytics/day?date=" + encodeURIComponent(date)).then(function (items) {
+      analyticsDayTitleEl.textContent = t("dayTasksTitle", { date: formatDate(date) });
+      analyticsDayListEl.replaceChildren();
+      analyticsDayPanelEl.classList.remove("hidden");
+      analyticsDayEmptyEl.classList.toggle("hidden", items.length > 0);
+      analyticsDayEmptyEl.textContent = t("noDayTasks");
+      items.forEach(function (item) {
+        const li = document.createElement("li"); li.className = "item";
+        const body = document.createElement("div"); body.className = "item-body";
+        const title = document.createElement("p"); title.className = "item-title"; title.textContent = item.title;
+        const meta = document.createElement("p"); meta.className = "item-completed";
+        meta.textContent = t(item.kind === "event" ? "completedEvent" : "completedTask") + " · " + new Date(item.completed_at).toLocaleTimeString(languageLocale(), { hour: "2-digit", minute: "2-digit" });
+        body.append(title, meta);
+        if (item.subject) { const subject = document.createElement("p"); subject.className = "item-subject"; subject.textContent = item.subject; body.insertBefore(subject, title); }
+        const actions = document.createElement("div"); actions.className = "item-actions";
+        const undo = document.createElement("button"); undo.type = "button"; undo.className = "icon-action complete-button is-completed"; undo.textContent = "↶"; undo.setAttribute("aria-label", t("restoreTask"));
+        undo.addEventListener("click", function () {
+          const url = item.kind === "event" ? "/api/events/" + item.id + "/status" : "/api/homework/" + item.id + "/status";
+          apiFetch(url, { method: "PUT", body: JSON.stringify({ completed: false }) }).then(function () { loadHomework(); return loadAnalytics(); }).then(function () { loadAnalyticsDay(date); }).catch(function (err) { setStatus(t("statusError") + err.message); });
+        });
+        actions.appendChild(undo); li.append(body, actions); analyticsDayListEl.appendChild(li);
+      });
+      analyticsDayPanelEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }).catch(function (err) { setStatus(t("loadAnalyticsError") + err.message); });
   }
 
   function renderItem(item) {

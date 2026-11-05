@@ -407,6 +407,9 @@ body {
 .chart-axis-label, .chart-date-label { fill: var(--muted); font: 600 11px "Manrope", sans-serif; }
 .chart-line { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
 .chart-point { stroke-width: 2; }
+.chart-point { cursor: pointer; }
+.chart-point:hover, .chart-point:focus { r: 6; outline: none; }
+.analytics-day-panel .list { margin-top: 12px; }
 .line-chart--week .chart-line { stroke: #8a6844; }
 .line-chart--week .chart-point { fill: #9b7954; stroke: var(--surface); }
 .line-chart--month .chart-line { stroke: #344a37; }

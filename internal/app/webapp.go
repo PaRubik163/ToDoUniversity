@@ -75,6 +75,7 @@ func (b *Bot) startWebServer(ctx context.Context, addr string) error {
 	mux.HandleFunc("/api/events/", b.withAuth(b.handleEventItem, userService, authService))
 	mux.HandleFunc("/api/settings", b.withAuth(b.handleSettings, userService, authService))
 	mux.HandleFunc("/api/analytics", b.withAuth(b.handleAnalytics, userService, authService))
+	mux.HandleFunc("/api/analytics/day", b.withAuth(b.handleAnalyticsDay, userService, authService))
 	mux.HandleFunc("/api/admin/containers", b.withAuth(b.handleAdminContainers, userService, authService))
 	mux.HandleFunc("/api/admin/containers/", b.withAuth(b.handleAdminContainers, userService, authService))
 	mux.HandleFunc("/api/admin/access", b.withAuth(b.handleAdminAccess, userService, authService))
@@ -351,6 +352,89 @@ func (b *Bot) completionCounts(ctx context.Context, userID int64, from, to time.
 		return nil, err
 	}
 	return counts, nil
+}
+
+type apiCompletedItem struct {
+	ID          int64  `json:"id"`
+	Kind        string `json:"kind"`
+	Title       string `json:"title"`
+	Subject     string `json:"subject,omitempty"`
+	Deadline    string `json:"deadline,omitempty"`
+	CompletedAt string `json:"completed_at"`
+}
+
+func (b *Bot) handleAnalyticsDay(w http.ResponseWriter, r *http.Request, userID int64) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	dateParam := strings.TrimSpace(r.URL.Query().Get("date"))
+	day, err := time.ParseInLocation("2006-01-02", dateParam, b.config.Timezone)
+	if err != nil || day.Format("2006-01-02") != dateParam {
+		http.Error(w, "date must be in YYYY-MM-DD format", http.StatusBadRequest)
+		return
+	}
+	end := day.AddDate(0, 0, 1)
+	items := make([]apiCompletedItem, 0)
+	rows, err := b.db.QueryContext(r.Context(), `
+		SELECT h.id, h.subject, h.title, h.deadline, s.completed_at
+		FROM homework h JOIN homework_status s ON s.homework_id = h.id
+		WHERE h.chat_id = $1 AND s.is_completed = TRUE AND s.completed_at >= $2 AND s.completed_at < $3
+		ORDER BY s.completed_at, h.id`, userID, day, end)
+	if err != nil {
+		log.Printf("get completed tasks for analytics day: %v", err)
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	for rows.Next() {
+		var item apiCompletedItem
+		var deadline, completedAt time.Time
+		item.Kind = "task"
+		if err := rows.Scan(&item.ID, &item.Subject, &item.Title, &deadline, &completedAt); err != nil {
+			rows.Close()
+			log.Printf("scan completed task for analytics day: %v", err)
+			http.Error(w, "database error", http.StatusInternalServerError)
+			return
+		}
+		item.Deadline = deadline.In(b.config.Timezone).Format("2006-01-02")
+		item.CompletedAt = completedAt.In(b.config.Timezone).Format(time.RFC3339)
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		log.Printf("iterate completed tasks for analytics day: %v", err)
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	rows.Close()
+	eventRows, err := b.db.QueryContext(r.Context(), `
+		SELECT id, title, completed_at FROM calendar_events
+		WHERE chat_id = $1 AND is_completed = TRUE AND completed_at >= $2 AND completed_at < $3
+		ORDER BY completed_at, id`, userID, day, end)
+	if err != nil {
+		log.Printf("get completed events for analytics day: %v", err)
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	defer eventRows.Close()
+	for eventRows.Next() {
+		var item apiCompletedItem
+		var completedAt time.Time
+		item.Kind = "event"
+		if err := eventRows.Scan(&item.ID, &item.Title, &completedAt); err != nil {
+			log.Printf("scan completed event for analytics day: %v", err)
+			http.Error(w, "database error", http.StatusInternalServerError)
+			return
+		}
+		item.CompletedAt = completedAt.In(b.config.Timezone).Format(time.RFC3339)
+		items = append(items, item)
+	}
+	if err := eventRows.Err(); err != nil {
+		log.Printf("iterate completed events for analytics day: %v", err)
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, items)
 }
 
 // apiSettings is the JSON shape for the mini app's reminder-time setting.
