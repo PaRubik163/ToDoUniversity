@@ -47,6 +47,8 @@ func (b *Bot) startWebServer(ctx context.Context, addr string) error {
 	mux.Handle("/favicon.png", websiteFiles)
 	mux.Handle("/site.css", websiteFiles)
 	mux.Handle("/site.js", websiteFiles)
+	mux.Handle("/admin.css", websiteFiles)
+	mux.Handle("/admin.js", websiteFiles)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/" {
 			http.ServeFileFS(w, r, website, "index.html")
@@ -55,6 +57,7 @@ func (b *Bot) startWebServer(ctx context.Context, addr string) error {
 		assets.ServeHTTP(w, r)
 	})
 	mux.HandleFunc("/tasks", func(w http.ResponseWriter, r *http.Request) { http.ServeFileFS(w, r, sub, "index.html") })
+	mux.HandleFunc("/admin", func(w http.ResponseWriter, r *http.Request) { http.ServeFileFS(w, r, website, "admin.html") })
 	userService := service.NewUserService(postgres.NewUserRepository(b.db))
 	authService := service.NewAuthService(postgres.NewAuthRepository(b.db), b.config.JWTSecret)
 	authHandler := newAuthHandler(authService, b.limiter, b.config.TrustProxyHeaders)
@@ -72,6 +75,9 @@ func (b *Bot) startWebServer(ctx context.Context, addr string) error {
 	mux.HandleFunc("/api/events/", b.withAuth(b.handleEventItem, userService, authService))
 	mux.HandleFunc("/api/settings", b.withAuth(b.handleSettings, userService, authService))
 	mux.HandleFunc("/api/analytics", b.withAuth(b.handleAnalytics, userService, authService))
+	mux.HandleFunc("/api/admin/containers", b.withAuth(b.handleAdminContainers, userService, authService))
+	mux.HandleFunc("/api/admin/containers/", b.withAuth(b.handleAdminContainers, userService, authService))
+	mux.HandleFunc("/api/admin/access", b.withAuth(b.handleAdminAccess, userService, authService))
 
 	server := &http.Server{
 		Addr:              addr,
@@ -85,7 +91,12 @@ func (b *Bot) startWebServer(ctx context.Context, addr string) error {
 		<-ctx.Done()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		_ = server.Shutdown(shutdownCtx)
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			log.Printf("graceful web server shutdown: %v; closing active connections", err)
+			if closeErr := server.Close(); closeErr != nil {
+				log.Printf("force web server close: %v", closeErr)
+			}
+		}
 	}()
 
 	log.Printf("mini app server listening on %s", addr)

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#d3d3d5">
+  <title>Администрирование — Задания</title>
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/site.css">
+  <link rel="stylesheet" href="/admin.css">
+</head>
+<body>
+  <main class="app admin-app">
+    <header class="header"><h1>Администрирование</h1><a class="admin-back" href="/tasks">К задачам</a></header>
+    <section class="add-form admin-card">
+      <p class="admin-project" id="project">Загружаю проект…</p>
+      <div id="container-list" class="container-list" aria-live="polite"></div>
+      <p id="admin-message" class="admin-message" role="status"></p>
+      <div class="admin-actions">
+        <button class="button secondary" id="refresh" type="button">Обновить список</button>
+        <button class="button primary" id="restart" type="button">Перезапустить все</button>
+        <button class="button danger" id="delete" type="button">Удалить все контейнеры…</button>
+      </div>
+      <p class="admin-note">Удаление остановит сервисы проекта. Данные PostgreSQL хранятся в отдельном Docker volume и этой кнопкой не удаляются. Для запуска контейнеров снова выполните на сервере <code>docker compose up -d</code>.</p>
+    </section>
+  </main>
+  <script src="/admin.js" defer></script>
+</body>
+</html>
