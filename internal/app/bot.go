@@ -35,18 +35,8 @@ type updateResponse struct {
 }
 
 type Update struct {
-	UpdateID      int64          `json:"update_id"`
-	Message       *Message       `json:"message"`
-	CallbackQuery *CallbackQuery `json:"callback_query"`
-}
-
-type CallbackQuery struct {
-	ID   string `json:"id"`
-	From struct {
-		ID int64 `json:"id"`
-	} `json:"from"`
-	Message *Message `json:"message"`
-	Data    string   `json:"data"`
+	UpdateID int64    `json:"update_id"`
+	Message  *Message `json:"message"`
 }
 
 type Message struct {
@@ -145,12 +135,6 @@ func (b *Bot) poll(ctx context.Context) error {
 		}
 		for _, update := range updates {
 			offset = update.UpdateID + 1
-			if update.CallbackQuery != nil {
-				if err := b.handleAdminCallback(ctx, update.CallbackQuery); err != nil {
-					log.Printf("handle admin callback: %v", err)
-				}
-				continue
-			}
 			if update.Message == nil || strings.TrimSpace(update.Message.Text) == "" {
 				continue
 			}
@@ -188,11 +172,6 @@ func (b *Bot) getUpdates(ctx context.Context, offset int64) ([]Update, error) {
 func (b *Bot) handleMessage(ctx context.Context, msg *Message) error {
 	text := strings.TrimSpace(msg.Text)
 	switch {
-	case text == "/admin":
-		if b.config.AdminTelegramID == 0 || msg.From.ID != b.config.AdminTelegramID || msg.Chat.Type != "private" {
-			return b.sendMessage(ctx, msg.Chat.ID, "Нет доступа.")
-		}
-		return b.sendAdminMenu(ctx, msg.Chat.ID)
 	case text == "/start":
 		if _, err := b.db.ExecContext(ctx, `INSERT INTO user_settings (chat_id, language) VALUES ($1, $2) ON CONFLICT (chat_id) DO NOTHING`, msg.Chat.ID, normalizedLanguage(msg.From.LanguageCode)); err != nil {
 			log.Printf("save Telegram language: %v", err)

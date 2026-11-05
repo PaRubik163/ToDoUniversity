@@ -201,7 +201,6 @@ body {
   transition: background-color .15s ease, border-color .15s ease, color .15s ease;
 }
 
-.admin-panel-link { display: block; text-align: center; text-decoration: none; }
 
 .button:active { transform: translateY(1px); }
 .button.primary { border-color: #263a2d; background: #263a2d; color: #fffdf8; }

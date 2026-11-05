@@ -21,9 +21,6 @@ type Config struct {
 	JWTSecret         string         `envconfig:"JWT_SECRET" required:"true"`
 	RedisURL          string         `envconfig:"REDIS_URL" default:"redis://localhost:6379/0"`
 	TrustProxyHeaders bool           `envconfig:"TRUST_PROXY_HEADERS" default:"false"`
-	AdminTelegramID   int64          `envconfig:"ADMIN_TELEGRAM_ID"`
-	DockerSocket      string         `envconfig:"DOCKER_SOCKET" default:"/var/run/docker.sock"`
-	ComposeProject    string         `envconfig:"COMPOSE_PROJECT_NAME" default:"todobot"`
 }
 
 // Load reads environment variables, applies defaults, and validates required
@@ -41,8 +38,6 @@ func Load() (Config, error) {
 	result.Port = strings.TrimSpace(result.Port)
 	result.JWTSecret = strings.TrimSpace(result.JWTSecret)
 	result.RedisURL = strings.TrimSpace(result.RedisURL)
-	result.DockerSocket = strings.TrimSpace(result.DockerSocket)
-	result.ComposeProject = strings.TrimSpace(result.ComposeProject)
 	if result.TelegramBotToken == "" {
 		return Config{}, fmt.Errorf("TELEGRAM_BOT_TOKEN is required")
 	}
@@ -57,12 +52,6 @@ func Load() (Config, error) {
 	}
 	if result.RedisURL == "" {
 		result.RedisURL = "redis://localhost:6379/0"
-	}
-	if result.DockerSocket == "" {
-		result.DockerSocket = "/var/run/docker.sock"
-	}
-	if result.ComposeProject == "" {
-		result.ComposeProject = "todobot"
 	}
 	port, err := strconv.Atoi(result.Port)
 	if err != nil || port < 1 || port > 65535 {

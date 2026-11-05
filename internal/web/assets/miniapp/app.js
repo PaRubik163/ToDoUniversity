@@ -4,7 +4,7 @@
   const translations = {
     ru: {
       appTitle: "Задания", settingsAria: "Настройки", addTaskAria: "Добавить задание",
-      settingsTitle: "Настройки", adminPanel: "Админ-панель", reminderDaysLabel: "Напоминать за", days14: "14 дней", days7: "7 дней", days3: "3 дня", days1: "1 день",
+      settingsTitle: "Настройки", reminderDaysLabel: "Напоминать за", days14: "14 дней", days7: "7 дней", days3: "3 дня", days1: "1 день",
       reminderTimesLabel: "Время напоминаний каждый день", addReminderTime: "Добавить время", removeReminderTime: "Удалить время", languageLabel: "Язык",
       designLabel: "Оформление", designClassic: "Обычное", designNeon: "Неоновое",
       cancel: "Отмена", save: "Сохранить", saveChanges: "Сохранить изменения",
@@ -33,7 +33,7 @@
     },
     en: {
       appTitle: "Tasks", settingsAria: "Settings", addTaskAria: "Add task",
-      settingsTitle: "Settings", adminPanel: "Admin panel", reminderDaysLabel: "Remind me", days14: "14 days before", days7: "7 days before", days3: "3 days before", days1: "1 day before",
+      settingsTitle: "Settings", reminderDaysLabel: "Remind me", days14: "14 days before", days7: "7 days before", days3: "3 days before", days1: "1 day before",
       reminderTimesLabel: "Reminder times each day", addReminderTime: "Add time", removeReminderTime: "Remove time", languageLabel: "Language",
       designLabel: "Appearance", designClassic: "Default", designNeon: "Neon",
       cancel: "Cancel", save: "Save", saveChanges: "Save changes",
@@ -60,7 +60,7 @@
       chartCount: "{date}: {count}", dayTasksTitle: "Completed {date}", noDayTasks: "Nothing was completed on this day.", completedTask: "Task", completedEvent: "Event", restoreTask: "Move back to to do", eventHourUnit: "h", calendar: "Calendar", newEvent: "New event", editEvent: "Edit event", eventTitle: "Event", eventDateTime: "Date and time", remindHours: "Remind me (hours before)", eventsForDay: "Events for this day", addEvent: "+ Event", noEvents: "No events on this date.", eventDelete: "Delete this event?", eventError: "Could not save event: ", eventDone: "Done", eventUndo: "Undo", noReminder: "No reminder"
     },
     zh: {
-      appTitle: "任务", settingsAria: "设置", addTaskAria: "添加任务", settingsTitle: "设置", adminPanel: "管理面板", reminderDaysLabel: "提前提醒",
+      appTitle: "任务", settingsAria: "设置", addTaskAria: "添加任务", settingsTitle: "设置", reminderDaysLabel: "提前提醒",
       days14: "提前14天", days7: "提前7天", days3: "提前3天", days1: "提前1天", reminderTimesLabel: "每日提醒时间",
       addReminderTime: "添加时间", removeReminderTime: "删除时间", languageLabel: "语言", designLabel: "外观", designClassic: "经典", designNeon: "霓虹",
       cancel: "取消", save: "保存", saveChanges: "保存更改", newTask: "新任务", subject: "课程", subjectPlaceholder: "软件开发",
@@ -76,7 +76,7 @@
       weekChartAria: "本周完成的任务", monthChartAria: "所选月份完成的任务", chartCount: "{date}：{count}"
     },
     es: {
-      appTitle: "Tareas", settingsAria: "Ajustes", addTaskAria: "Añadir tarea", settingsTitle: "Ajustes", adminPanel: "Panel de administración", reminderDaysLabel: "Avisar con",
+      appTitle: "Tareas", settingsAria: "Ajustes", addTaskAria: "Añadir tarea", settingsTitle: "Ajustes", reminderDaysLabel: "Avisar con",
       days14: "14 días antes", days7: "7 días antes", days3: "3 días antes", days1: "1 día antes", reminderTimesLabel: "Hora diaria de los avisos",
       addReminderTime: "Añadir hora", removeReminderTime: "Quitar hora", languageLabel: "Idioma", designLabel: "Apariencia", designClassic: "Clásico", designNeon: "Neón",
       cancel: "Cancelar", save: "Guardar", saveChanges: "Guardar cambios", newTask: "Nueva tarea", subject: "Asignatura", subjectPlaceholder: "Desarrollo de software",
@@ -92,7 +92,7 @@
       weekChartAria: "Tareas completadas esta semana", monthChartAria: "Tareas completadas en el mes seleccionado", chartCount: "{date}: {count}"
     },
     ar: {
-      appTitle: "المهام", settingsAria: "الإعدادات", addTaskAria: "إضافة مهمة", settingsTitle: "الإعدادات", adminPanel: "لوحة الإدارة", reminderDaysLabel: "التذكير قبل",
+      appTitle: "المهام", settingsAria: "الإعدادات", addTaskAria: "إضافة مهمة", settingsTitle: "الإعدادات", reminderDaysLabel: "التذكير قبل",
       days14: "قبل 14 يومًا", days7: "قبل 7 أيام", days3: "قبل 3 أيام", days1: "قبل يوم", reminderTimesLabel: "وقت التذكير اليومي",
       addReminderTime: "إضافة وقت", removeReminderTime: "حذف الوقت", languageLabel: "اللغة", designLabel: "المظهر", designClassic: "كلاسيكي", designNeon: "نيون",
       cancel: "إلغاء", save: "حفظ", saveChanges: "حفظ التغييرات", newTask: "مهمة جديدة", subject: "المادة", subjectPlaceholder: "تطوير البرمجيات",
@@ -108,7 +108,7 @@
       weekChartAria: "المهام المكتملة هذا الأسبوع", monthChartAria: "المهام المكتملة في الشهر المحدد", chartCount: "{date}: {count}"
     },
     hy: {
-      appTitle: "Առաջադրանքներ", settingsAria: "Կարգավորումներ", addTaskAria: "Ավելացնել առաջադրանք", settingsTitle: "Կարգավորումներ", adminPanel: "Ադմին վահանակ", reminderDaysLabel: "Հիշեցնել առաջ",
+      appTitle: "Առաջադրանքներ", settingsAria: "Կարգավորումներ", addTaskAria: "Ավելացնել առաջադրանք", settingsTitle: "Կարգավորումներ", reminderDaysLabel: "Հիշեցնել առաջ",
       days14: "14 օր առաջ", days7: "7 օր առաջ", days3: "3 օր առաջ", days1: "1 օր առաջ", reminderTimesLabel: "Ամենօրյա հիշեցման ժամերը",
       addReminderTime: "Ավելացնել ժամ", removeReminderTime: "Հեռացնել ժամը", languageLabel: "Լեզու", designLabel: "Տեսք", designClassic: "Դասական", designNeon: "Նեոնային",
       cancel: "Չեղարկել", save: "Պահպանել", saveChanges: "Պահպանել փոփոխությունները", newTask: "Նոր առաջադրանք", subject: "Առարկա", subjectPlaceholder: "Ծրագրային ապահովման մշակում",
@@ -254,7 +254,6 @@
 
   const settingsToggleEl = document.getElementById("settings-toggle");
   const settingsFormEl = document.getElementById("settings-form");
-  const adminPanelLinkEl = document.getElementById("admin-panel-link");
   const settingsErrorEl = document.getElementById("settings-error");
   const cancelSettingsEl = document.getElementById("cancel-settings");
   const reminderTimesEl = document.getElementById("reminder-times");
@@ -573,7 +572,6 @@
 
   function loadHomework() {
     setStatus(t("loading"));
-    loadAdminAccess();
     Promise.all([apiFetch("/api/homework"), fetchAnalytics(), apiFetch("/api/settings"), fetchCalendarEvents()])
       .then(function (results) {
         homeworkItems = results[0] || [];
@@ -593,14 +591,6 @@
       .catch(function (err) {
         setStatus(t("loadTasksError") + err.message);
       });
-  }
-
-  function loadAdminAccess() {
-    apiFetch("/api/admin/access").then(function (result) {
-      adminPanelLinkEl.classList.toggle("hidden", !result || result.is_admin !== true);
-    }).catch(function () {
-      adminPanelLinkEl.classList.add("hidden");
-    });
   }
 
   function createHomework(payload) {
