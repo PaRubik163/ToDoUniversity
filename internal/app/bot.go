@@ -23,10 +23,11 @@ import (
 const pollTimeout = 25 * time.Second
 
 type Bot struct {
-	config  config.Config
-	db      *sql.DB
-	client  *http.Client
-	limiter ratelimit.Limiter
+	config          config.Config
+	db              *sql.DB
+	client          *http.Client
+	limiter         ratelimit.Limiter
+	recommendations *service.GeminiRecommendations
 }
 
 type updateResponse struct {
@@ -35,18 +36,8 @@ type updateResponse struct {
 }
 
 type Update struct {
-	UpdateID      int64          `json:"update_id"`
-	Message       *Message       `json:"message"`
-	CallbackQuery *CallbackQuery `json:"callback_query"`
-}
-
-type CallbackQuery struct {
-	ID   string `json:"id"`
-	From struct {
-		ID int64 `json:"id"`
-	} `json:"from"`
-	Message *Message `json:"message"`
-	Data    string   `json:"data"`
+	UpdateID int64    `json:"update_id"`
+	Message  *Message `json:"message"`
 }
 
 type Message struct {
@@ -67,10 +58,11 @@ type homework = domain.Homework
 // New constructs the Telegram bot and its HTTP application services.
 func New(appConfig config.Config, db *sql.DB, limiter ratelimit.Limiter) *Bot {
 	return &Bot{
-		config:  appConfig,
-		db:      db,
-		client:  &http.Client{Timeout: pollTimeout + 10*time.Second},
-		limiter: limiter,
+		config:          appConfig,
+		db:              db,
+		client:          &http.Client{Timeout: pollTimeout + 10*time.Second},
+		limiter:         limiter,
+		recommendations: service.NewGeminiRecommendations(appConfig.GeminiAPIKey, appConfig.GeminiModel),
 	}
 }
 
@@ -145,12 +137,6 @@ func (b *Bot) poll(ctx context.Context) error {
 		}
 		for _, update := range updates {
 			offset = update.UpdateID + 1
-			if update.CallbackQuery != nil {
-				if err := b.handleAdminCallback(ctx, update.CallbackQuery); err != nil {
-					log.Printf("handle admin callback: %v", err)
-				}
-				continue
-			}
 			if update.Message == nil || strings.TrimSpace(update.Message.Text) == "" {
 				continue
 			}
@@ -188,11 +174,6 @@ func (b *Bot) getUpdates(ctx context.Context, offset int64) ([]Update, error) {
 func (b *Bot) handleMessage(ctx context.Context, msg *Message) error {
 	text := strings.TrimSpace(msg.Text)
 	switch {
-	case text == "/admin":
-		if b.config.AdminTelegramID == 0 || msg.From.ID != b.config.AdminTelegramID || msg.Chat.Type != "private" {
-			return b.sendMessage(ctx, msg.Chat.ID, "Нет доступа.")
-		}
-		return b.sendAdminMenu(ctx, msg.Chat.ID)
 	case text == "/start":
 		if _, err := b.db.ExecContext(ctx, `INSERT INTO user_settings (chat_id, language) VALUES ($1, $2) ON CONFLICT (chat_id) DO NOTHING`, msg.Chat.ID, normalizedLanguage(msg.From.LanguageCode)); err != nil {
 			log.Printf("save Telegram language: %v", err)
@@ -446,8 +427,117 @@ func (b *Bot) reminderLoop(ctx context.Context) {
 			local := time.Now().In(b.config.Timezone)
 			b.sendDueReminders(ctx, local.Hour(), local.Minute())
 			b.sendDueEventReminders(ctx, local)
+			b.sendDueRecommendations(ctx, local)
 			timer.Reset(time.Minute)
 		}
+	}
+}
+
+// sendDueRecommendations uses the first configured daily reminder time as the
+// user's recommendation delivery time and records one delivery per chat/day.
+func (b *Bot) sendDueRecommendations(ctx context.Context, now time.Time) {
+	if b.config.GeminiAPIKey == "" {
+		return
+	}
+	date := now.Format("2006-01-02")
+	clock := now.Format("15:04")
+	_, err := b.db.ExecContext(ctx, `INSERT INTO daily_recommendation_log (chat_id, recommendation_date)
+		SELECT chat_id, $1::date FROM user_settings
+		WHERE chat_id > 0 AND reminder_times[1] = $2::time
+		ON CONFLICT (chat_id, recommendation_date) DO NOTHING`, date, clock)
+	if err != nil {
+		log.Printf("schedule daily recommendations: %v", err)
+		return
+	}
+	type delivery struct {
+		chatID  int64
+		day     time.Time
+		attempt int
+	}
+	rows, err := b.db.QueryContext(ctx, `WITH due AS (
+		SELECT chat_id, recommendation_date FROM daily_recommendation_log
+		WHERE recommendation_date=$1::date AND status IN ('pending','sending')
+		  AND next_attempt_at <= $2 AND (locked_until IS NULL OR locked_until < $2)
+		ORDER BY chat_id LIMIT 20 FOR UPDATE SKIP LOCKED
+	)
+	UPDATE daily_recommendation_log l SET status='sending', attempts=l.attempts+1,
+		locked_until=$2 + interval '2 minutes'
+	FROM due WHERE l.chat_id=due.chat_id AND l.recommendation_date=due.recommendation_date
+	RETURNING l.chat_id, l.recommendation_date, l.attempts`, date, now)
+	if err != nil {
+		log.Printf("claim daily recommendations: %v", err)
+		return
+	}
+	deliveries := make([]delivery, 0)
+	for rows.Next() {
+		var job delivery
+		if err := rows.Scan(&job.chatID, &job.day, &job.attempt); err != nil {
+			log.Printf("scan daily recommendation delivery: %v", err)
+			continue
+		}
+		deliveries = append(deliveries, job)
+	}
+	if err := rows.Err(); err != nil {
+		log.Printf("iterate daily recommendation deliveries: %v", err)
+	}
+	rows.Close()
+	for _, job := range deliveries {
+		var language string
+		if err := b.db.QueryRowContext(ctx, `SELECT language FROM user_settings WHERE chat_id=$1`, job.chatID).Scan(&language); err != nil {
+			b.retryDailyRecommendation(ctx, job, now, err)
+			continue
+		}
+		stats, err := b.analyticsSnapshot(ctx, job.chatID, "")
+		if err != nil {
+			b.retryDailyRecommendation(ctx, job, now, err)
+			continue
+		}
+		answer, err := b.recommendations.Generate(ctx, language, stats)
+		if err != nil {
+			b.retryDailyRecommendation(ctx, job, now, err)
+			continue
+		}
+		message := dailyRecommendationTitle(language) + "\n\n" + answer
+		if len([]rune(message)) > 4000 {
+			message = string([]rune(message)[:4000])
+		}
+		if err := b.sendMessage(ctx, job.chatID, message); err != nil {
+			b.retryDailyRecommendation(ctx, job, now, err)
+			continue
+		}
+		if _, err := b.db.ExecContext(ctx, `UPDATE daily_recommendation_log SET status='sent', sent_at=$3, locked_until=NULL, last_error=NULL WHERE chat_id=$1 AND recommendation_date=$2`, job.chatID, job.day, now); err != nil {
+			log.Printf("mark daily recommendation sent for chat %d: %v", job.chatID, err)
+		}
+	}
+}
+
+func dailyRecommendationTitle(language string) string {
+	switch language {
+	case "en":
+		return "🌿 Your plan for today"
+	case "zh":
+		return "🌿 今日计划"
+	case "es":
+		return "🌿 Tu plan para hoy"
+	case "ar":
+		return "🌿 خطتك لهذا اليوم"
+	case "hy":
+		return "🌿 Այսօրվա պլանը"
+	default:
+		return "🌿 План на сегодня"
+	}
+}
+
+func (b *Bot) retryDailyRecommendation(ctx context.Context, job struct {
+	chatID  int64
+	day     time.Time
+	attempt int
+}, now time.Time, cause error) {
+	log.Printf("send daily recommendation to chat %d (attempt %d): %v", job.chatID, job.attempt, cause)
+	if _, err := b.db.ExecContext(ctx, `UPDATE daily_recommendation_log
+		SET status='pending', locked_until=NULL, next_attempt_at=$3 + make_interval(mins => LEAST(60, 5 * $4)), last_error=left($5,500)
+		WHERE chat_id=$1 AND recommendation_date=$2`, job.chatID, job.day, now, job.attempt, cause.Error()); err != nil {
+		log.Printf("schedule daily recommendation retry for chat %d: %v", job.chatID, err)
 	}
 }
 

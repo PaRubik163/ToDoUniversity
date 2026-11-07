@@ -47,8 +47,6 @@ func (b *Bot) startWebServer(ctx context.Context, addr string) error {
 	mux.Handle("/favicon.png", websiteFiles)
 	mux.Handle("/site.css", websiteFiles)
 	mux.Handle("/site.js", websiteFiles)
-	mux.Handle("/admin.css", websiteFiles)
-	mux.Handle("/admin.js", websiteFiles)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/" {
 			http.ServeFileFS(w, r, website, "index.html")
@@ -57,7 +55,6 @@ func (b *Bot) startWebServer(ctx context.Context, addr string) error {
 		assets.ServeHTTP(w, r)
 	})
 	mux.HandleFunc("/tasks", func(w http.ResponseWriter, r *http.Request) { http.ServeFileFS(w, r, sub, "index.html") })
-	mux.HandleFunc("/admin", func(w http.ResponseWriter, r *http.Request) { http.ServeFileFS(w, r, website, "admin.html") })
 	userService := service.NewUserService(postgres.NewUserRepository(b.db))
 	authService := service.NewAuthService(postgres.NewAuthRepository(b.db), b.config.JWTSecret)
 	authHandler := newAuthHandler(authService, b.limiter, b.config.TrustProxyHeaders)
@@ -75,9 +72,8 @@ func (b *Bot) startWebServer(ctx context.Context, addr string) error {
 	mux.HandleFunc("/api/events/", b.withAuth(b.handleEventItem, userService, authService))
 	mux.HandleFunc("/api/settings", b.withAuth(b.handleSettings, userService, authService))
 	mux.HandleFunc("/api/analytics", b.withAuth(b.handleAnalytics, userService, authService))
-	mux.HandleFunc("/api/admin/containers", b.withAuth(b.handleAdminContainers, userService, authService))
-	mux.HandleFunc("/api/admin/containers/", b.withAuth(b.handleAdminContainers, userService, authService))
-	mux.HandleFunc("/api/admin/access", b.withAuth(b.handleAdminAccess, userService, authService))
+	mux.HandleFunc("/api/analytics/day", b.withAuth(b.handleAnalyticsDay, userService, authService))
+	mux.HandleFunc("/api/analytics/recommendations", b.withAuth(b.handleAnalyticsRecommendations, userService, authService))
 
 	server := &http.Server{
 		Addr:              addr,
@@ -104,6 +100,148 @@ func (b *Bot) startWebServer(ctx context.Context, addr string) error {
 		return err
 	}
 	return nil
+}
+
+type analyticsRecommendationsRequest struct {
+	Language string `json:"language"`
+	Month    string `json:"month"`
+}
+
+func (b *Bot) handleAnalyticsRecommendations(w http.ResponseWriter, r *http.Request, userID int64) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if b.config.GeminiAPIKey == "" {
+		http.Error(w, "GEMINI_API_KEY is not configured", http.StatusServiceUnavailable)
+		return
+	}
+	var req analyticsRecommendationsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	language := strings.ToLower(strings.TrimSpace(req.Language))
+	switch language {
+	case "ru", "en", "zh", "es", "ar", "hy":
+	default:
+		language = "ru"
+	}
+	stats, err := b.analyticsSnapshot(r.Context(), userID, req.Month)
+	if err != nil {
+		log.Printf("build analytics recommendations data: %v", err)
+		http.Error(w, "could not load analytics", http.StatusInternalServerError)
+		return
+	}
+	answer, err := b.recommendations.Generate(r.Context(), language, stats)
+	if err != nil {
+		log.Printf("generate analytics recommendations: %v", err)
+		http.Error(w, "could not generate recommendations", http.StatusBadGateway)
+		return
+	}
+	writeJSON(w, map[string]string{"recommendations": answer})
+}
+
+type recommendationSnapshot struct {
+	apiAnalytics
+	Tasks  []service.RecommendationTaskContext  `json:"tasks"`
+	Events []service.RecommendationEventContext `json:"upcoming_events"`
+}
+
+func (b *Bot) analyticsSnapshot(ctx context.Context, userID int64, monthParam string) ([]byte, error) {
+	var result recommendationSnapshot
+	now := time.Now().In(b.config.Timezone)
+	daysSinceMonday := (int(now.Weekday()) + 6) % 7
+	weekStart := time.Date(now.Year(), now.Month(), now.Day()-daysSinceMonday, 0, 0, 0, 0, b.config.Timezone)
+	weekEnd := weekStart.AddDate(0, 0, 7)
+	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, b.config.Timezone)
+	if monthParam != "" {
+		parsed, err := time.ParseInLocation("2006-01", monthParam, b.config.Timezone)
+		if err != nil || parsed.Format("2006-01") != monthParam {
+			return nil, fmt.Errorf("invalid analytics month")
+		}
+		monthStart = time.Date(parsed.Year(), parsed.Month(), 1, 0, 0, 0, 0, b.config.Timezone)
+	}
+	monthEnd := monthStart.AddDate(0, 1, 0)
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, b.config.Timezone)
+	result.WeekDays = make([]apiDailyCompletion, 0, 7)
+	result.MonthDays = make([]apiDailyCompletion, 0, monthEnd.Day())
+	if err := b.db.QueryRowContext(ctx, `SELECT COUNT(*) FILTER (WHERE completed=FALSE), COUNT(*) FILTER (WHERE completed=FALSE AND due_at<$2) FROM (
+		SELECT COALESCE(s.is_completed,FALSE) AS completed,h.deadline AS due_at FROM homework h LEFT JOIN homework_status s ON s.homework_id=h.id WHERE h.chat_id=$1
+		UNION ALL SELECT is_completed,event_at FROM calendar_events WHERE chat_id=$1) tasks`, userID, today).Scan(&result.Uncompleted, &result.Overdue); err != nil {
+		return nil, err
+	}
+	if err := b.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM homework h JOIN homework_status s ON s.homework_id=h.id WHERE h.chat_id=$1 AND s.is_completed=TRUE AND s.completed_at IS NOT NULL AND (s.completed_at AT TIME ZONE $2)::date <= (h.deadline AT TIME ZONE $2)::date`, userID, b.config.Timezone.String()).Scan(&result.CompletedOnTime); err != nil {
+		return nil, err
+	}
+	week, err := b.completionCounts(ctx, userID, weekStart, weekEnd)
+	if err != nil {
+		return nil, err
+	}
+	month, err := b.completionCounts(ctx, userID, monthStart, monthEnd)
+	if err != nil {
+		return nil, err
+	}
+	for date := weekStart; date.Before(weekEnd); date = date.AddDate(0, 0, 1) {
+		key := date.Format("2006-01-02")
+		count := week[key]
+		result.WeekDays = append(result.WeekDays, apiDailyCompletion{Date: key, Count: count})
+		result.CompletedThisWeek += count
+	}
+	for date := monthStart; date.Before(monthEnd); date = date.AddDate(0, 0, 1) {
+		key := date.Format("2006-01-02")
+		count := month[key]
+		result.MonthDays = append(result.MonthDays, apiDailyCompletion{Date: key, Count: count})
+		result.CompletedThisMonth += count
+	}
+	// Give Gemini useful personal context without forwarding free-form notes.
+	result.Tasks = make([]service.RecommendationTaskContext, 0)
+	taskRows, err := b.db.QueryContext(ctx, `SELECT h.subject, h.title, h.priority, h.deadline
+		FROM homework h LEFT JOIN homework_status s ON s.homework_id=h.id
+		WHERE h.chat_id=$1 AND COALESCE(s.is_completed,FALSE)=FALSE
+		ORDER BY h.deadline, CASE h.priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END
+		LIMIT 50`, userID)
+	if err != nil {
+		return nil, err
+	}
+	for taskRows.Next() {
+		var item service.RecommendationTaskContext
+		var deadline time.Time
+		if err := taskRows.Scan(&item.Subject, &item.Title, &item.Priority, &deadline); err != nil {
+			taskRows.Close()
+			return nil, err
+		}
+		item.Deadline = deadline.In(b.config.Timezone).Format("2006-01-02")
+		result.Tasks = append(result.Tasks, item)
+	}
+	if err := taskRows.Err(); err != nil {
+		taskRows.Close()
+		return nil, err
+	}
+	taskRows.Close()
+	result.Events = make([]service.RecommendationEventContext, 0)
+	eventRows, err := b.db.QueryContext(ctx, `SELECT title, event_at FROM calendar_events
+		WHERE chat_id=$1 AND is_completed=FALSE AND event_at >= $2 AND event_at < $3
+		ORDER BY event_at LIMIT 30`, userID, today, today.AddDate(0, 0, 14))
+	if err != nil {
+		return nil, err
+	}
+	for eventRows.Next() {
+		var item service.RecommendationEventContext
+		var at time.Time
+		if err := eventRows.Scan(&item.Title, &at); err != nil {
+			eventRows.Close()
+			return nil, err
+		}
+		item.At = at.In(b.config.Timezone).Format("2006-01-02 15:04")
+		result.Events = append(result.Events, item)
+	}
+	if err := eventRows.Err(); err != nil {
+		eventRows.Close()
+		return nil, err
+	}
+	eventRows.Close()
+	return json.Marshal(result)
 }
 
 func logRequests(next http.Handler) http.Handler {
@@ -351,6 +489,89 @@ func (b *Bot) completionCounts(ctx context.Context, userID int64, from, to time.
 		return nil, err
 	}
 	return counts, nil
+}
+
+type apiCompletedItem struct {
+	ID          int64  `json:"id"`
+	Kind        string `json:"kind"`
+	Title       string `json:"title"`
+	Subject     string `json:"subject,omitempty"`
+	Deadline    string `json:"deadline,omitempty"`
+	CompletedAt string `json:"completed_at"`
+}
+
+func (b *Bot) handleAnalyticsDay(w http.ResponseWriter, r *http.Request, userID int64) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	dateParam := strings.TrimSpace(r.URL.Query().Get("date"))
+	day, err := time.ParseInLocation("2006-01-02", dateParam, b.config.Timezone)
+	if err != nil || day.Format("2006-01-02") != dateParam {
+		http.Error(w, "date must be in YYYY-MM-DD format", http.StatusBadRequest)
+		return
+	}
+	end := day.AddDate(0, 0, 1)
+	items := make([]apiCompletedItem, 0)
+	rows, err := b.db.QueryContext(r.Context(), `
+		SELECT h.id, h.subject, h.title, h.deadline, s.completed_at
+		FROM homework h JOIN homework_status s ON s.homework_id = h.id
+		WHERE h.chat_id = $1 AND s.is_completed = TRUE AND s.completed_at >= $2 AND s.completed_at < $3
+		ORDER BY s.completed_at, h.id`, userID, day, end)
+	if err != nil {
+		log.Printf("get completed tasks for analytics day: %v", err)
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	for rows.Next() {
+		var item apiCompletedItem
+		var deadline, completedAt time.Time
+		item.Kind = "task"
+		if err := rows.Scan(&item.ID, &item.Subject, &item.Title, &deadline, &completedAt); err != nil {
+			rows.Close()
+			log.Printf("scan completed task for analytics day: %v", err)
+			http.Error(w, "database error", http.StatusInternalServerError)
+			return
+		}
+		item.Deadline = deadline.In(b.config.Timezone).Format("2006-01-02")
+		item.CompletedAt = completedAt.In(b.config.Timezone).Format(time.RFC3339)
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		log.Printf("iterate completed tasks for analytics day: %v", err)
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	rows.Close()
+	eventRows, err := b.db.QueryContext(r.Context(), `
+		SELECT id, title, completed_at FROM calendar_events
+		WHERE chat_id = $1 AND is_completed = TRUE AND completed_at >= $2 AND completed_at < $3
+		ORDER BY completed_at, id`, userID, day, end)
+	if err != nil {
+		log.Printf("get completed events for analytics day: %v", err)
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	defer eventRows.Close()
+	for eventRows.Next() {
+		var item apiCompletedItem
+		var completedAt time.Time
+		item.Kind = "event"
+		if err := eventRows.Scan(&item.ID, &item.Title, &completedAt); err != nil {
+			log.Printf("scan completed event for analytics day: %v", err)
+			http.Error(w, "database error", http.StatusInternalServerError)
+			return
+		}
+		item.CompletedAt = completedAt.In(b.config.Timezone).Format(time.RFC3339)
+		items = append(items, item)
+	}
+	if err := eventRows.Err(); err != nil {
+		log.Printf("iterate completed events for analytics day: %v", err)
+		http.Error(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, items)
 }
 
 // apiSettings is the JSON shape for the mini app's reminder-time setting.

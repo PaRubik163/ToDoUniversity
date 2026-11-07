@@ -29,12 +29,8 @@ services:
   bot:
     build:
       context: .
-    # Docker socket access is required by the admin container controls.
-    user: "0:0"
     restart: unless-stopped
     environment:
-      ADMIN_TELEGRAM_ID: ${ADMIN_TELEGRAM_ID:-0}
-      COMPOSE_PROJECT_NAME: ${COMPOSE_PROJECT_NAME:-todobot}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?Create .env from .env.example and add the bot token}
       BOT_TIMEZONE: ${BOT_TIMEZONE:-Europe/Moscow}
       DATABASE_URL: postgres://bot_user:change_this_local_password@postgres:5432/homework_bot?sslmode=disable
@@ -43,8 +39,8 @@ services:
       JWT_SECRET: ${JWT_SECRET:?Create a random JWT_SECRET of at least 32 characters}
       MINI_APP_URL: ${MINI_APP_URL:?Create .env from .env.example and add your HTTPS mini app URL, e.g. https://todolist.ooyble.online}
       PORT: ${PORT:-8080}
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash}
     ports:
       - "127.0.0.1:${PORT:-8080}:${PORT:-8080}"
     depends_on:

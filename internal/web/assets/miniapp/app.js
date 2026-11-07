@@ -4,7 +4,7 @@
   const translations = {
     ru: {
       appTitle: "Задания", settingsAria: "Настройки", addTaskAria: "Добавить задание",
-      settingsTitle: "Настройки", adminPanel: "Админ-панель", reminderDaysLabel: "Напоминать за", days14: "14 дней", days7: "7 дней", days3: "3 дня", days1: "1 день",
+      settingsTitle: "Настройки", reminderDaysLabel: "Напоминать за", days14: "14 дней", days7: "7 дней", days3: "3 дня", days1: "1 день",
       reminderTimesLabel: "Время напоминаний каждый день", addReminderTime: "Добавить время", removeReminderTime: "Удалить время", languageLabel: "Язык",
       designLabel: "Оформление", designClassic: "Обычное", designNeon: "Неоновое",
       cancel: "Отмена", save: "Сохранить", saveChanges: "Сохранить изменения",
@@ -13,6 +13,9 @@
       priorityLabel: "Важность", priorityLow: "Низкая", priorityMedium: "Обычная", priorityHigh: "Срочная", noteLabel: "Заметка", notePlaceholder: "Дополнительные детали", priorityFilterAria: "Фильтр по важности", filterAllPriorities: "Любая важность", noteFilterPlaceholder: "Поиск по заметкам", archive: "Архив", noArchive: "Архив пока пуст.", doneOnTime: "Выполнено в срок",
       sectionsAria: "Разделы заданий", uncompleted: "Несделанные", completed: "Сделанные",
       overdue: "Просроченные", analytics: "Аналитика", previousMonth: "Предыдущий месяц",
+      recommendationTitle: "Советы по планированию", recommendationsButton: "Получить советы", recommendationsLoading: "Анализирую статистику…", recommendationsError: "Не удалось получить рекомендации. Попробуйте позже.",
+      recommendationsPrivacy: "Для персональных рекомендаций Google Gemini получит названия и предметы незавершённых задач, приоритеты, сроки и ближайшие события. Заметки к задачам не отправляются.",
+      recommendationsScheduleInfo: "Ежедневный план в Telegram приходит в первое время из списка выше.",
       nextMonth: "Следующий месяц", analyticsMonth: "Месяц аналитики", doneThisWeek: "Сделано за неделю",
       doneThisMonth: "Сделано за месяц", uncompletedTotal: "Несделано всего", overdueTotal: "Просрочено",
       currentWeek: "Текущая неделя", loading: "Загрузка…",
@@ -28,12 +31,12 @@
       dueToday: "срок сегодня", daysLeft: "осталось {days} {unit}", dayUnit: "дней", dayUnitOne: "день", dayUnitFew: "дня",
       weekRange: "Неделя: {from} — {to}", monthGraphTitle: "Выполнено по дням — {month}",
       weekChartAria: "Выполненные задания за текущую неделю", monthChartAria: "Выполненные задания за выбранный месяц",
-      chartCount: "{date}: {count}", eventHourUnit: "\u0447\u0430\u0441.",
+      chartCount: "{date}: {count}", dayTasksTitle: "Выполнено {date}", noDayTasks: "В этот день ничего не выполнено.", completedTask: "Задание", completedEvent: "Событие", restoreTask: "Вернуть в несделанные", eventHourUnit: "\u0447\u0430\u0441.",
       calendar: "\u041f\u043e\u0441\u0442\u043e\u044f\u043d\u043d\u044b\u0435", newEvent: "\u041d\u043e\u0432\u043e\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u0435", editEvent: "\u0418\u0437\u043c\u0435\u043d\u0438\u0442\u044c \u0441\u043e\u0431\u044b\u0442\u0438\u0435", eventTitle: "\u0421\u043e\u0431\u044b\u0442\u0438\u0435", eventDateTime: "\u0414\u0430\u0442\u0430 \u0438 \u0432\u0440\u0435\u043c\u044f", remindHours: "\u041d\u0430\u043f\u043e\u043c\u043d\u0438\u0442\u044c \u0437\u0430 (\u0447\u0430\u0441\u043e\u0432)", eventsForDay: "\u0421\u043e\u0431\u044b\u0442\u0438\u044f \u0434\u043d\u044f", addEvent: "+ \u0421\u043e\u0431\u044b\u0442\u0438\u0435", noEvents: "\u041d\u0430 \u044d\u0442\u0443 \u0434\u0430\u0442\u0443 \u0441\u043e\u0431\u044b\u0442\u0438\u0439 \u043d\u0435\u0442.", eventDelete: "\u0423\u0434\u0430\u043b\u0438\u0442\u044c \u044d\u0442\u043e \u0441\u043e\u0431\u044b\u0442\u0438\u0435?", eventError: "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c: ", eventDone: "\u0413\u043e\u0442\u043e\u0432\u043e", eventUndo: "\u0412\u0435\u0440\u043d\u0443\u0442\u044c", noReminder: "\u0411\u0435\u0437 \u043d\u0430\u043f\u043e\u043c\u0438\u043d\u0430\u043d\u0438\u044f"
     },
     en: {
       appTitle: "Tasks", settingsAria: "Settings", addTaskAria: "Add task",
-      settingsTitle: "Settings", adminPanel: "Admin panel", reminderDaysLabel: "Remind me", days14: "14 days before", days7: "7 days before", days3: "3 days before", days1: "1 day before",
+      settingsTitle: "Settings", reminderDaysLabel: "Remind me", days14: "14 days before", days7: "7 days before", days3: "3 days before", days1: "1 day before",
       reminderTimesLabel: "Reminder times each day", addReminderTime: "Add time", removeReminderTime: "Remove time", languageLabel: "Language",
       designLabel: "Appearance", designClassic: "Default", designNeon: "Neon",
       cancel: "Cancel", save: "Save", saveChanges: "Save changes",
@@ -42,6 +45,9 @@
       priorityLabel: "Priority", priorityLow: "Low", priorityMedium: "Normal", priorityHigh: "Urgent", noteLabel: "Note", notePlaceholder: "Extra details", priorityFilterAria: "Filter by priority", filterAllPriorities: "Any priority", noteFilterPlaceholder: "Search notes", archive: "Archive", noArchive: "The archive is empty.", doneOnTime: "Completed on time",
       sectionsAria: "Task sections", uncompleted: "To do", completed: "Done",
       overdue: "Overdue", analytics: "Analytics", previousMonth: "Previous month",
+      recommendationTitle: "Planning suggestions", recommendationsButton: "Get suggestions", recommendationsLoading: "Analyzing your statistics…", recommendationsError: "Could not get suggestions. Please try again later.",
+      recommendationsPrivacy: "For personalized suggestions, Google Gemini receives open task titles and subjects, priorities, deadlines, and upcoming events. Task notes are not sent.",
+      recommendationsScheduleInfo: "Your daily Telegram plan arrives at the first time listed above.",
       nextMonth: "Next month", analyticsMonth: "Analytics month", doneThisWeek: "Done this week",
       doneThisMonth: "Done this month", uncompletedTotal: "To do", overdueTotal: "Overdue",
       currentWeek: "Current week", loading: "Loading…",
@@ -57,10 +63,10 @@
       dueToday: "due today", daysLeft: "{days} {unit} left", dayUnit: "days", dayUnitOne: "day", dayUnitFew: "days",
       weekRange: "Week: {from} — {to}", monthGraphTitle: "Completed by day — {month}",
       weekChartAria: "Tasks completed this week", monthChartAria: "Tasks completed in selected month",
-      chartCount: "{date}: {count}", eventHourUnit: "h", calendar: "Calendar", newEvent: "New event", editEvent: "Edit event", eventTitle: "Event", eventDateTime: "Date and time", remindHours: "Remind me (hours before)", eventsForDay: "Events for this day", addEvent: "+ Event", noEvents: "No events on this date.", eventDelete: "Delete this event?", eventError: "Could not save event: ", eventDone: "Done", eventUndo: "Undo", noReminder: "No reminder"
+      chartCount: "{date}: {count}", dayTasksTitle: "Completed {date}", noDayTasks: "Nothing was completed on this day.", completedTask: "Task", completedEvent: "Event", restoreTask: "Move back to to do", eventHourUnit: "h", calendar: "Calendar", newEvent: "New event", editEvent: "Edit event", eventTitle: "Event", eventDateTime: "Date and time", remindHours: "Remind me (hours before)", eventsForDay: "Events for this day", addEvent: "+ Event", noEvents: "No events on this date.", eventDelete: "Delete this event?", eventError: "Could not save event: ", eventDone: "Done", eventUndo: "Undo", noReminder: "No reminder"
     },
     zh: {
-      appTitle: "任务", settingsAria: "设置", addTaskAria: "添加任务", settingsTitle: "设置", adminPanel: "管理面板", reminderDaysLabel: "提前提醒",
+      appTitle: "任务", settingsAria: "设置", addTaskAria: "添加任务", settingsTitle: "设置", reminderDaysLabel: "提前提醒",
       days14: "提前14天", days7: "提前7天", days3: "提前3天", days1: "提前1天", reminderTimesLabel: "每日提醒时间",
       addReminderTime: "添加时间", removeReminderTime: "删除时间", languageLabel: "语言", designLabel: "外观", designClassic: "经典", designNeon: "霓虹",
       cancel: "取消", save: "保存", saveChanges: "保存更改", newTask: "新任务", subject: "课程", subjectPlaceholder: "软件开发",
@@ -76,7 +82,7 @@
       weekChartAria: "本周完成的任务", monthChartAria: "所选月份完成的任务", chartCount: "{date}：{count}"
     },
     es: {
-      appTitle: "Tareas", settingsAria: "Ajustes", addTaskAria: "Añadir tarea", settingsTitle: "Ajustes", adminPanel: "Panel de administración", reminderDaysLabel: "Avisar con",
+      appTitle: "Tareas", settingsAria: "Ajustes", addTaskAria: "Añadir tarea", settingsTitle: "Ajustes", reminderDaysLabel: "Avisar con",
       days14: "14 días antes", days7: "7 días antes", days3: "3 días antes", days1: "1 día antes", reminderTimesLabel: "Hora diaria de los avisos",
       addReminderTime: "Añadir hora", removeReminderTime: "Quitar hora", languageLabel: "Idioma", designLabel: "Apariencia", designClassic: "Clásico", designNeon: "Neón",
       cancel: "Cancelar", save: "Guardar", saveChanges: "Guardar cambios", newTask: "Nueva tarea", subject: "Asignatura", subjectPlaceholder: "Desarrollo de software",
@@ -92,7 +98,7 @@
       weekChartAria: "Tareas completadas esta semana", monthChartAria: "Tareas completadas en el mes seleccionado", chartCount: "{date}: {count}"
     },
     ar: {
-      appTitle: "المهام", settingsAria: "الإعدادات", addTaskAria: "إضافة مهمة", settingsTitle: "الإعدادات", adminPanel: "لوحة الإدارة", reminderDaysLabel: "التذكير قبل",
+      appTitle: "المهام", settingsAria: "الإعدادات", addTaskAria: "إضافة مهمة", settingsTitle: "الإعدادات", reminderDaysLabel: "التذكير قبل",
       days14: "قبل 14 يومًا", days7: "قبل 7 أيام", days3: "قبل 3 أيام", days1: "قبل يوم", reminderTimesLabel: "وقت التذكير اليومي",
       addReminderTime: "إضافة وقت", removeReminderTime: "حذف الوقت", languageLabel: "اللغة", designLabel: "المظهر", designClassic: "كلاسيكي", designNeon: "نيون",
       cancel: "إلغاء", save: "حفظ", saveChanges: "حفظ التغييرات", newTask: "مهمة جديدة", subject: "المادة", subjectPlaceholder: "تطوير البرمجيات",
@@ -108,7 +114,7 @@
       weekChartAria: "المهام المكتملة هذا الأسبوع", monthChartAria: "المهام المكتملة في الشهر المحدد", chartCount: "{date}: {count}"
     },
     hy: {
-      appTitle: "Առաջադրանքներ", settingsAria: "Կարգավորումներ", addTaskAria: "Ավելացնել առաջադրանք", settingsTitle: "Կարգավորումներ", adminPanel: "Ադմին վահանակ", reminderDaysLabel: "Հիշեցնել առաջ",
+      appTitle: "Առաջադրանքներ", settingsAria: "Կարգավորումներ", addTaskAria: "Ավելացնել առաջադրանք", settingsTitle: "Կարգավորումներ", reminderDaysLabel: "Հիշեցնել առաջ",
       days14: "14 օր առաջ", days7: "7 օր առաջ", days3: "3 օր առաջ", days1: "1 օր առաջ", reminderTimesLabel: "Ամենօրյա հիշեցման ժամերը",
       addReminderTime: "Ավելացնել ժամ", removeReminderTime: "Հեռացնել ժամը", languageLabel: "Լեզու", designLabel: "Տեսք", designClassic: "Դասական", designNeon: "Նեոնային",
       cancel: "Չեղարկել", save: "Պահպանել", saveChanges: "Պահպանել փոփոխությունները", newTask: "Նոր առաջադրանք", subject: "Առարկա", subjectPlaceholder: "Ծրագրային ապահովման մշակում",
@@ -229,6 +235,15 @@
   const monthChartTitleEl = document.getElementById("month-chart-title");
   const weekChartEl = document.getElementById("week-chart");
   const monthChartEl = document.getElementById("month-chart");
+  const analyticsDayDialogEl = document.getElementById("analytics-day-dialog");
+  const analyticsDayTitleEl = document.getElementById("analytics-day-title");
+  const analyticsDayListEl = document.getElementById("analytics-day-list");
+  const analyticsDayEmptyEl = document.getElementById("analytics-day-empty");
+  const recommendationsButtonEl = document.getElementById("recommendations-button");
+  const recommendationsResultEl = document.getElementById("recommendations-result");
+  const recommendationsErrorEl = document.getElementById("recommendations-error");
+  document.getElementById("analytics-day-close").addEventListener("click", function () { analyticsDayDialogEl.close(); });
+  analyticsDayDialogEl.addEventListener("click", function (event) { if (event.target === analyticsDayDialogEl) analyticsDayDialogEl.close(); });
 
   const formEl = document.getElementById("add-form");
   const formTitleEl = document.getElementById("form-title");
@@ -248,7 +263,6 @@
 
   const settingsToggleEl = document.getElementById("settings-toggle");
   const settingsFormEl = document.getElementById("settings-form");
-  const adminPanelLinkEl = document.getElementById("admin-panel-link");
   const settingsErrorEl = document.getElementById("settings-error");
   const cancelSettingsEl = document.getElementById("cancel-settings");
   const reminderTimesEl = document.getElementById("reminder-times");
@@ -567,7 +581,6 @@
 
   function loadHomework() {
     setStatus(t("loading"));
-    loadAdminAccess();
     Promise.all([apiFetch("/api/homework"), fetchAnalytics(), apiFetch("/api/settings"), fetchCalendarEvents()])
       .then(function (results) {
         homeworkItems = results[0] || [];
@@ -587,14 +600,6 @@
       .catch(function (err) {
         setStatus(t("loadTasksError") + err.message);
       });
-  }
-
-  function loadAdminAccess() {
-    apiFetch("/api/admin/access").then(function (result) {
-      adminPanelLinkEl.classList.toggle("hidden", !result || result.is_admin !== true);
-    }).catch(function () {
-      adminPanelLinkEl.classList.add("hidden");
-    });
   }
 
   function createHomework(payload) {
@@ -799,6 +804,7 @@
     monthChartTitleEl.textContent = t("monthGraphTitle", { month: formatMonth(data.month) });
     renderLineChart(weekChartEl, data.week_days || [], true);
     renderLineChart(monthChartEl, data.month_days || [], false);
+    if (analyticsDayDialogEl.open) analyticsDayDialogEl.close();
   }
 
   function fetchAnalytics() {
@@ -807,10 +813,27 @@
   }
 
   function loadAnalytics() {
-    fetchAnalytics()
+    return fetchAnalytics()
       .then(renderAnalytics)
       .catch(function (err) { setStatus(t("loadAnalyticsError") + err.message); });
   }
+
+  recommendationsButtonEl.addEventListener("click", function () {
+    recommendationsButtonEl.disabled = true;
+    recommendationsResultEl.classList.remove("hidden");
+    recommendationsResultEl.textContent = t("recommendationsLoading");
+    recommendationsErrorEl.classList.add("hidden");
+    apiFetch("/api/analytics/recommendations", {
+      method: "POST",
+      body: JSON.stringify({ language: language, month: selectedMonth })
+    }).then(function (data) {
+      recommendationsResultEl.textContent = data.recommendations || "";
+    }).catch(function () {
+      recommendationsResultEl.classList.add("hidden");
+      recommendationsErrorEl.textContent = t("recommendationsError");
+      recommendationsErrorEl.classList.remove("hidden");
+    }).finally(function () { recommendationsButtonEl.disabled = false; });
+  });
 
   function shiftSelectedMonth(amount) {
     if (!selectedMonth) return;
@@ -854,7 +877,7 @@
     const max = Math.max(1, ...days.map(function (day) { return day.count; }));
     const svg = document.createElementNS(namespace, "svg");
     svg.setAttribute("viewBox", "0 0 " + width + " " + height);
-    svg.setAttribute("role", "img");
+    svg.setAttribute("role", "group");
     svg.setAttribute("aria-label", t(showWeekday ? "weekChartAria" : "monthChartAria"));
     if (showWeekday) {
       svg.setAttribute("preserveAspectRatio", "none");
@@ -895,11 +918,16 @@
       const circle = document.createElementNS(namespace, "circle");
       circle.setAttribute("cx", point.x);
       circle.setAttribute("cy", point.y);
-      circle.setAttribute("r", showWeekday ? 4 : 3);
+      circle.setAttribute("r", showWeekday ? 6 : 5);
       circle.setAttribute("class", "chart-point");
+      circle.setAttribute("role", "button");
+      circle.setAttribute("tabindex", "0");
+      circle.setAttribute("aria-label", t("chartCount", { date: formatDate(point.day.date), count: point.day.count }));
       const title = document.createElementNS(namespace, "title");
       title.textContent = t("chartCount", { date: formatDate(point.day.date), count: point.day.count });
       circle.appendChild(title);
+      circle.addEventListener("click", function () { loadAnalyticsDay(point.day.date); });
+      circle.addEventListener("keydown", function (event) { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); loadAnalyticsDay(point.day.date); } });
       svg.appendChild(circle);
 
       const dateParts = point.day.date.split("-").map(Number);
@@ -919,6 +947,32 @@
     });
 
     container.replaceChildren(svg);
+  }
+
+  function loadAnalyticsDay(date) {
+    apiFetch("/api/analytics/day?date=" + encodeURIComponent(date)).then(function (items) {
+      analyticsDayTitleEl.textContent = t("dayTasksTitle", { date: formatDate(date) });
+      analyticsDayListEl.replaceChildren();
+      analyticsDayEmptyEl.classList.toggle("hidden", items.length > 0);
+      analyticsDayEmptyEl.textContent = t("noDayTasks");
+      items.forEach(function (item) {
+        const li = document.createElement("li"); li.className = "item";
+        const body = document.createElement("div"); body.className = "item-body";
+        const title = document.createElement("p"); title.className = "item-title"; title.textContent = item.title;
+        const meta = document.createElement("p"); meta.className = "item-completed";
+        meta.textContent = t(item.kind === "event" ? "completedEvent" : "completedTask") + " · " + new Date(item.completed_at).toLocaleTimeString(languageLocale(), { hour: "2-digit", minute: "2-digit" });
+        body.append(title, meta);
+        if (item.subject) { const subject = document.createElement("p"); subject.className = "item-subject"; subject.textContent = item.subject; body.insertBefore(subject, title); }
+        const actions = document.createElement("div"); actions.className = "item-actions";
+        const undo = document.createElement("button"); undo.type = "button"; undo.className = "icon-action complete-button is-completed"; undo.textContent = "↶"; undo.setAttribute("aria-label", t("restoreTask"));
+        undo.addEventListener("click", function () {
+          const url = item.kind === "event" ? "/api/events/" + item.id + "/status" : "/api/homework/" + item.id + "/status";
+          apiFetch(url, { method: "PUT", body: JSON.stringify({ completed: false }) }).then(function () { loadHomework(); return loadAnalytics(); }).then(function () { loadAnalyticsDay(date); }).catch(function (err) { setStatus(t("statusError") + err.message); });
+        });
+        actions.appendChild(undo); li.append(body, actions); analyticsDayListEl.appendChild(li);
+      });
+      if (!analyticsDayDialogEl.open) analyticsDayDialogEl.showModal();
+    }).catch(function (err) { setStatus(t("loadAnalyticsError") + err.message); });
   }
 
   function renderItem(item) {

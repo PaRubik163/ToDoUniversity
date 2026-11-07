@@ -30,6 +30,7 @@
     <fieldset class="reminder-setting">
       <legend data-i18n="reminderTimesLabel">Время напоминаний каждый день</legend>
       <div id="reminder-times" class="reminder-times"></div>
+      <p class="setting-help" data-i18n="recommendationsScheduleInfo">Ежедневный план в Telegram приходит в первое время из списка выше.</p>
       <button type="button" id="add-reminder-time" class="button secondary add-reminder-time" data-i18n="addReminderTime">Добавить время</button>
     </fieldset>
     <div class="language-setting">
@@ -52,7 +53,6 @@
         <button class="theme-option" type="button" data-theme="neon" data-i18n="designNeon">Неоновое</button>
       </div>
     </div>
-    <a id="admin-panel-link" class="button secondary admin-panel-link hidden" href="/admin" data-i18n="adminPanel">Админ-панель</a>
     <div class="form-actions">
       <button type="button" id="cancel-settings" class="button secondary" data-i18n="cancel">Отмена</button>
       <button type="submit" class="button primary" data-i18n="save">Сохранить</button>
@@ -107,7 +107,6 @@
 
   <nav class="sections" aria-label="Разделы заданий" data-i18n-aria="sectionsAria">
     <button class="section-button active" type="button" data-section="uncompleted" data-i18n="uncompleted">Несделанные</button>
-    <button class="section-button" type="button" data-section="completed" data-i18n="archive">Архив</button>
     <button class="section-button" type="button" data-section="overdue" data-i18n="overdue">Просроченные</button>
     <button class="section-button" type="button" data-section="analytics" data-i18n="analytics">Аналитика</button>
     <button class="section-button" type="button" data-section="calendar" data-i18n="calendar">Постоянные</button>
@@ -143,6 +142,12 @@
       <article class="stat-card"><span data-i18n="uncompletedTotal">Несделано всего</span><strong id="stat-uncompleted">0</strong></article>
       <article class="stat-card stat-card--overdue"><span data-i18n="overdueTotal">Просрочено</span><strong id="stat-overdue">0</strong></article>
     </div>
+    <section class="chart-panel recommendation-panel">
+      <div class="recommendation-heading"><h2 data-i18n="recommendationTitle">Советы по планированию</h2><button id="recommendations-button" class="button secondary" type="button" data-i18n="recommendationsButton">Получить советы</button></div>
+      <p class="recommendations-note" data-i18n="recommendationsPrivacy">Для персональных рекомендаций Google Gemini получит названия и предметы незавершённых задач, приоритеты, сроки и ближайшие события. Заметки к задачам не отправляются.</p>
+      <p id="recommendations-result" class="recommendations-result hidden" aria-live="polite"></p>
+      <p id="recommendations-error" class="recommendations-error hidden" role="alert"></p>
+    </section>
     <section class="chart-panel">
       <h2 data-i18n="currentWeek">Текущая неделя</h2>
       <div id="week-chart" class="line-chart line-chart--week"></div>
@@ -156,6 +161,16 @@
   <ul id="list" class="list"></ul>
 
   <p id="empty-state" class="empty hidden"></p>
+  <dialog id="analytics-day-dialog" class="analytics-day-dialog" aria-labelledby="analytics-day-title">
+    <section class="analytics-day-card">
+      <header class="analytics-day-header">
+        <h2 id="analytics-day-title"></h2>
+        <button id="analytics-day-close" class="icon-button icon-button--ghost" type="button" aria-label="Закрыть">×</button>
+      </header>
+      <ul id="analytics-day-list" class="list"></ul>
+      <p id="analytics-day-empty" class="empty hidden"></p>
+    </section>
+  </dialog>
   <dialog id="link-code-dialog" class="link-code-dialog" aria-labelledby="link-code-title">
     <section class="add-form">
       <h2 id="link-code-title" class="form-title">Связать Telegram</h2>

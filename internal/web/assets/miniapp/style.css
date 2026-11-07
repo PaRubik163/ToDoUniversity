@@ -201,7 +201,6 @@ body {
   transition: background-color .15s ease, border-color .15s ease, color .15s ease;
 }
 
-.admin-panel-link { display: block; text-align: center; text-decoration: none; }
 
 .button:active { transform: translateY(1px); }
 .button.primary { border-color: #263a2d; background: #263a2d; color: #fffdf8; }
@@ -212,6 +211,13 @@ body {
 .link-code-dialog p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
 .link-code-value { display: block; padding: 15px; border: 1px dashed var(--brass); background: var(--brass-soft); color: var(--olive); font: 700 22px/1.2 "Manrope", sans-serif; letter-spacing: .16em; text-align: center; user-select: all; }
 .link-code-dialog .button { width: 100%; }
+.analytics-day-dialog { width: min(460px, calc(100vw - 28px)); max-height: min(78vh, 680px); padding: 0; overflow: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+.analytics-day-dialog::backdrop { background: rgba(16, 20, 16, .48); backdrop-filter: blur(3px); }
+.analytics-day-card { padding: 18px; }
+.analytics-day-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.analytics-day-header h2 { margin: 0; color: var(--ink); font: 600 22px/1.1 "Cormorant Garamond", Georgia, serif; }
+.analytics-day-dialog .list { margin: 0; }
+.analytics-day-dialog .empty { margin: 12px 0 2px; }
 .confirm-dialog { width: min(420px, calc(100vw - 32px)); padding: 0; border: 0; background: transparent; color: var(--ink); }
 .confirm-dialog::backdrop { background: rgba(16, 20, 16, .48); }
 .confirm-dialog-content { margin: 0; }
@@ -221,6 +227,7 @@ body {
 .button.secondary:hover { border-color: var(--muted); color: var(--ink); }
 
 .reminder-setting { min-width: 0; margin: 0; padding: 0; border: 0; }
+.setting-help { margin: 8px 0 0; color: var(--muted); font-size: 11px; line-height: 1.4; }
 .task-reminder-setting { margin-top: 2px; }
 .task-reminder-control { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; }
 .add-form input[type="range"] {
@@ -398,6 +405,11 @@ body {
   box-shadow: 0 4px 14px rgba(53, 48, 36, .035);
 }
 .chart-panel h2 { margin: 0 0 12px; color: var(--ink); font: 600 21px/1.1 "Cormorant Garamond", Georgia, serif; }
+.recommendation-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.recommendation-heading h2 { margin: 0; }
+.recommendations-note { margin: 8px 0 0; color: var(--muted); font-size: 11px; line-height: 1.4; }
+.recommendations-result { margin: 12px 0 0; color: var(--ink); font-size: 14px; line-height: 1.65; white-space: pre-line; }
+.recommendations-error { margin: 10px 0 0; color: var(--red); font-size: 13px; }
 .chart-scroll { overflow-x: auto; scrollbar-color: #b5ad9a var(--paper-deep); scrollbar-width: thin; }
 .line-chart { width: 100%; height: 210px; }
 .line-chart--month { width: max-content; min-width: 100%; }
@@ -407,6 +419,8 @@ body {
 .chart-axis-label, .chart-date-label { fill: var(--muted); font: 600 11px "Manrope", sans-serif; }
 .chart-line { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
 .chart-point { stroke-width: 2; }
+.chart-point { cursor: pointer; }
+.chart-point:hover, .chart-point:focus { r: 6; outline: none; }
 .line-chart--week .chart-line { stroke: #8a6844; }
 .line-chart--week .chart-point { fill: #9b7954; stroke: var(--surface); }
 .line-chart--month .chart-line { stroke: #344a37; }
