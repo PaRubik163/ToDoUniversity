@@ -141,6 +141,12 @@
       <article class="stat-card"><span data-i18n="uncompletedTotal">Несделано всего</span><strong id="stat-uncompleted">0</strong></article>
       <article class="stat-card stat-card--overdue"><span data-i18n="overdueTotal">Просрочено</span><strong id="stat-overdue">0</strong></article>
     </div>
+    <section class="chart-panel recommendation-panel">
+      <div class="recommendation-heading"><h2 data-i18n="recommendationTitle">Советы по планированию</h2><button id="recommendations-button" class="button secondary" type="button" data-i18n="recommendationsButton">Получить советы</button></div>
+      <p class="recommendations-note" data-i18n="recommendationsPrivacy">Для рекомендаций Google Gemini получит только агрегированные числа из статистики.</p>
+      <p id="recommendations-result" class="recommendations-result hidden" aria-live="polite"></p>
+      <p id="recommendations-error" class="recommendations-error hidden" role="alert"></p>
+    </section>
     <section class="chart-panel">
       <h2 data-i18n="currentWeek">Текущая неделя</h2>
       <div id="week-chart" class="line-chart line-chart--week"></div>

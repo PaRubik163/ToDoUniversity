@@ -73,6 +73,7 @@ func (b *Bot) startWebServer(ctx context.Context, addr string) error {
 	mux.HandleFunc("/api/settings", b.withAuth(b.handleSettings, userService, authService))
 	mux.HandleFunc("/api/analytics", b.withAuth(b.handleAnalytics, userService, authService))
 	mux.HandleFunc("/api/analytics/day", b.withAuth(b.handleAnalyticsDay, userService, authService))
+	mux.HandleFunc("/api/analytics/recommendations", b.withAuth(b.handleAnalyticsRecommendations, userService, authService))
 
 	server := &http.Server{
 		Addr:              addr,
@@ -99,6 +100,95 @@ func (b *Bot) startWebServer(ctx context.Context, addr string) error {
 		return err
 	}
 	return nil
+}
+
+type analyticsRecommendationsRequest struct {
+	Language string `json:"language"`
+	Month    string `json:"month"`
+}
+
+func (b *Bot) handleAnalyticsRecommendations(w http.ResponseWriter, r *http.Request, userID int64) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if b.config.GeminiAPIKey == "" {
+		http.Error(w, "GEMINI_API_KEY is not configured", http.StatusServiceUnavailable)
+		return
+	}
+	var req analyticsRecommendationsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	language := strings.ToLower(strings.TrimSpace(req.Language))
+	switch language {
+	case "ru", "en", "zh", "es", "ar", "hy":
+	default:
+		language = "ru"
+	}
+	stats, err := b.analyticsSnapshot(r.Context(), userID, req.Month)
+	if err != nil {
+		log.Printf("build analytics recommendations data: %v", err)
+		http.Error(w, "could not load analytics", http.StatusInternalServerError)
+		return
+	}
+	answer, err := b.recommendations.Generate(r.Context(), language, stats)
+	if err != nil {
+		log.Printf("generate analytics recommendations: %v", err)
+		http.Error(w, "could not generate recommendations", http.StatusBadGateway)
+		return
+	}
+	writeJSON(w, map[string]string{"recommendations": answer})
+}
+
+func (b *Bot) analyticsSnapshot(ctx context.Context, userID int64, monthParam string) ([]byte, error) {
+	var result apiAnalytics
+	now := time.Now().In(b.config.Timezone)
+	daysSinceMonday := (int(now.Weekday()) + 6) % 7
+	weekStart := time.Date(now.Year(), now.Month(), now.Day()-daysSinceMonday, 0, 0, 0, 0, b.config.Timezone)
+	weekEnd := weekStart.AddDate(0, 0, 7)
+	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, b.config.Timezone)
+	if monthParam != "" {
+		parsed, err := time.ParseInLocation("2006-01", monthParam, b.config.Timezone)
+		if err != nil || parsed.Format("2006-01") != monthParam {
+			return nil, fmt.Errorf("invalid analytics month")
+		}
+		monthStart = time.Date(parsed.Year(), parsed.Month(), 1, 0, 0, 0, 0, b.config.Timezone)
+	}
+	monthEnd := monthStart.AddDate(0, 1, 0)
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, b.config.Timezone)
+	result.WeekDays = make([]apiDailyCompletion, 0, 7)
+	result.MonthDays = make([]apiDailyCompletion, 0, monthEnd.Day())
+	if err := b.db.QueryRowContext(ctx, `SELECT COUNT(*) FILTER (WHERE completed=FALSE), COUNT(*) FILTER (WHERE completed=FALSE AND due_at<$2) FROM (
+		SELECT COALESCE(s.is_completed,FALSE) AS completed,h.deadline AS due_at FROM homework h LEFT JOIN homework_status s ON s.homework_id=h.id WHERE h.chat_id=$1
+		UNION ALL SELECT is_completed,event_at FROM calendar_events WHERE chat_id=$1) tasks`, userID, today).Scan(&result.Uncompleted, &result.Overdue); err != nil {
+		return nil, err
+	}
+	if err := b.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM homework h JOIN homework_status s ON s.homework_id=h.id WHERE h.chat_id=$1 AND s.is_completed=TRUE AND s.completed_at IS NOT NULL AND (s.completed_at AT TIME ZONE $2)::date <= (h.deadline AT TIME ZONE $2)::date`, userID, b.config.Timezone.String()).Scan(&result.CompletedOnTime); err != nil {
+		return nil, err
+	}
+	week, err := b.completionCounts(ctx, userID, weekStart, weekEnd)
+	if err != nil {
+		return nil, err
+	}
+	month, err := b.completionCounts(ctx, userID, monthStart, monthEnd)
+	if err != nil {
+		return nil, err
+	}
+	for date := weekStart; date.Before(weekEnd); date = date.AddDate(0, 0, 1) {
+		key := date.Format("2006-01-02")
+		count := week[key]
+		result.WeekDays = append(result.WeekDays, apiDailyCompletion{Date: key, Count: count})
+		result.CompletedThisWeek += count
+	}
+	for date := monthStart; date.Before(monthEnd); date = date.AddDate(0, 0, 1) {
+		key := date.Format("2006-01-02")
+		count := month[key]
+		result.MonthDays = append(result.MonthDays, apiDailyCompletion{Date: key, Count: count})
+		result.CompletedThisMonth += count
+	}
+	return json.Marshal(result)
 }
 
 func logRequests(next http.Handler) http.Handler {

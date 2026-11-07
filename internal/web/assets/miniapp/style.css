@@ -404,6 +404,11 @@ body {
   box-shadow: 0 4px 14px rgba(53, 48, 36, .035);
 }
 .chart-panel h2 { margin: 0 0 12px; color: var(--ink); font: 600 21px/1.1 "Cormorant Garamond", Georgia, serif; }
+.recommendation-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.recommendation-heading h2 { margin: 0; }
+.recommendations-note { margin: 8px 0 0; color: var(--muted); font-size: 11px; line-height: 1.4; }
+.recommendations-result { margin: 12px 0 0; color: var(--ink); font-size: 14px; line-height: 1.65; white-space: pre-line; }
+.recommendations-error { margin: 10px 0 0; color: var(--red); font-size: 13px; }
 .chart-scroll { overflow-x: auto; scrollbar-color: #b5ad9a var(--paper-deep); scrollbar-width: thin; }
 .line-chart { width: 100%; height: 210px; }
 .line-chart--month { width: max-content; min-width: 100%; }

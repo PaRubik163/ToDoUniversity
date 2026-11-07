@@ -23,10 +23,11 @@ import (
 const pollTimeout = 25 * time.Second
 
 type Bot struct {
-	config  config.Config
-	db      *sql.DB
-	client  *http.Client
-	limiter ratelimit.Limiter
+	config          config.Config
+	db              *sql.DB
+	client          *http.Client
+	limiter         ratelimit.Limiter
+	recommendations *service.GeminiRecommendations
 }
 
 type updateResponse struct {
@@ -57,10 +58,11 @@ type homework = domain.Homework
 // New constructs the Telegram bot and its HTTP application services.
 func New(appConfig config.Config, db *sql.DB, limiter ratelimit.Limiter) *Bot {
 	return &Bot{
-		config:  appConfig,
-		db:      db,
-		client:  &http.Client{Timeout: pollTimeout + 10*time.Second},
-		limiter: limiter,
+		config:          appConfig,
+		db:              db,
+		client:          &http.Client{Timeout: pollTimeout + 10*time.Second},
+		limiter:         limiter,
+		recommendations: service.NewGeminiRecommendations(appConfig.GeminiAPIKey, appConfig.GeminiModel),
 	}
 }
 

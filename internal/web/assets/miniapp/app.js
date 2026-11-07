@@ -13,6 +13,8 @@
       priorityLabel: "Важность", priorityLow: "Низкая", priorityMedium: "Обычная", priorityHigh: "Срочная", noteLabel: "Заметка", notePlaceholder: "Дополнительные детали", priorityFilterAria: "Фильтр по важности", filterAllPriorities: "Любая важность", noteFilterPlaceholder: "Поиск по заметкам", archive: "Архив", noArchive: "Архив пока пуст.", doneOnTime: "Выполнено в срок",
       sectionsAria: "Разделы заданий", uncompleted: "Несделанные", completed: "Сделанные",
       overdue: "Просроченные", analytics: "Аналитика", previousMonth: "Предыдущий месяц",
+      recommendationTitle: "Советы по планированию", recommendationsButton: "Получить советы", recommendationsLoading: "Анализирую статистику…", recommendationsError: "Не удалось получить рекомендации. Попробуйте позже.",
+      recommendationsPrivacy: "Для рекомендаций Google Gemini получит только агрегированные числа из статистики.",
       nextMonth: "Следующий месяц", analyticsMonth: "Месяц аналитики", doneThisWeek: "Сделано за неделю",
       doneThisMonth: "Сделано за месяц", uncompletedTotal: "Несделано всего", overdueTotal: "Просрочено",
       currentWeek: "Текущая неделя", loading: "Загрузка…",
@@ -42,6 +44,8 @@
       priorityLabel: "Priority", priorityLow: "Low", priorityMedium: "Normal", priorityHigh: "Urgent", noteLabel: "Note", notePlaceholder: "Extra details", priorityFilterAria: "Filter by priority", filterAllPriorities: "Any priority", noteFilterPlaceholder: "Search notes", archive: "Archive", noArchive: "The archive is empty.", doneOnTime: "Completed on time",
       sectionsAria: "Task sections", uncompleted: "To do", completed: "Done",
       overdue: "Overdue", analytics: "Analytics", previousMonth: "Previous month",
+      recommendationTitle: "Planning suggestions", recommendationsButton: "Get suggestions", recommendationsLoading: "Analyzing your statistics…", recommendationsError: "Could not get suggestions. Please try again later.",
+      recommendationsPrivacy: "Google Gemini receives only aggregate statistics to generate suggestions.",
       nextMonth: "Next month", analyticsMonth: "Analytics month", doneThisWeek: "Done this week",
       doneThisMonth: "Done this month", uncompletedTotal: "To do", overdueTotal: "Overdue",
       currentWeek: "Current week", loading: "Loading…",
@@ -233,6 +237,9 @@
   const analyticsDayTitleEl = document.getElementById("analytics-day-title");
   const analyticsDayListEl = document.getElementById("analytics-day-list");
   const analyticsDayEmptyEl = document.getElementById("analytics-day-empty");
+  const recommendationsButtonEl = document.getElementById("recommendations-button");
+  const recommendationsResultEl = document.getElementById("recommendations-result");
+  const recommendationsErrorEl = document.getElementById("recommendations-error");
   document.getElementById("analytics-day-close").addEventListener("click", function () { analyticsDayDialogEl.close(); });
   analyticsDayDialogEl.addEventListener("click", function (event) { if (event.target === analyticsDayDialogEl) analyticsDayDialogEl.close(); });
 
@@ -808,6 +815,23 @@
       .then(renderAnalytics)
       .catch(function (err) { setStatus(t("loadAnalyticsError") + err.message); });
   }
+
+  recommendationsButtonEl.addEventListener("click", function () {
+    recommendationsButtonEl.disabled = true;
+    recommendationsResultEl.classList.remove("hidden");
+    recommendationsResultEl.textContent = t("recommendationsLoading");
+    recommendationsErrorEl.classList.add("hidden");
+    apiFetch("/api/analytics/recommendations", {
+      method: "POST",
+      body: JSON.stringify({ language: language, month: selectedMonth })
+    }).then(function (data) {
+      recommendationsResultEl.textContent = data.recommendations || "";
+    }).catch(function () {
+      recommendationsResultEl.classList.add("hidden");
+      recommendationsErrorEl.textContent = t("recommendationsError");
+      recommendationsErrorEl.classList.remove("hidden");
+    }).finally(function () { recommendationsButtonEl.disabled = false; });
+  });
 
   function shiftSelectedMonth(amount) {
     if (!selectedMonth) return;
