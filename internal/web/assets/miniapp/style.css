@@ -227,6 +227,7 @@ body {
 .button.secondary:hover { border-color: var(--muted); color: var(--ink); }
 
 .reminder-setting { min-width: 0; margin: 0; padding: 0; border: 0; }
+.setting-help { margin: 8px 0 0; color: var(--muted); font-size: 11px; line-height: 1.4; }
 .task-reminder-setting { margin-top: 2px; }
 .task-reminder-control { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; }
 .add-form input[type="range"] {

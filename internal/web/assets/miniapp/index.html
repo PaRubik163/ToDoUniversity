@@ -30,6 +30,7 @@
     <fieldset class="reminder-setting">
       <legend data-i18n="reminderTimesLabel">Время напоминаний каждый день</legend>
       <div id="reminder-times" class="reminder-times"></div>
+      <p class="setting-help" data-i18n="recommendationsScheduleInfo">Ежедневный план в Telegram приходит в первое время из списка выше.</p>
       <button type="button" id="add-reminder-time" class="button secondary add-reminder-time" data-i18n="addReminderTime">Добавить время</button>
     </fieldset>
     <div class="language-setting">
@@ -143,7 +144,7 @@
     </div>
     <section class="chart-panel recommendation-panel">
       <div class="recommendation-heading"><h2 data-i18n="recommendationTitle">Советы по планированию</h2><button id="recommendations-button" class="button secondary" type="button" data-i18n="recommendationsButton">Получить советы</button></div>
-      <p class="recommendations-note" data-i18n="recommendationsPrivacy">Для рекомендаций Google Gemini получит только агрегированные числа из статистики.</p>
+      <p class="recommendations-note" data-i18n="recommendationsPrivacy">Для персональных рекомендаций Google Gemini получит названия и предметы незавершённых задач, приоритеты, сроки и ближайшие события. Заметки к задачам не отправляются.</p>
       <p id="recommendations-result" class="recommendations-result hidden" aria-live="polite"></p>
       <p id="recommendations-error" class="recommendations-error hidden" role="alert"></p>
     </section>

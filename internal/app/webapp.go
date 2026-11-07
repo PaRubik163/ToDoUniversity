@@ -142,8 +142,14 @@ func (b *Bot) handleAnalyticsRecommendations(w http.ResponseWriter, r *http.Requ
 	writeJSON(w, map[string]string{"recommendations": answer})
 }
 
+type recommendationSnapshot struct {
+	apiAnalytics
+	Tasks  []service.RecommendationTaskContext  `json:"tasks"`
+	Events []service.RecommendationEventContext `json:"upcoming_events"`
+}
+
 func (b *Bot) analyticsSnapshot(ctx context.Context, userID int64, monthParam string) ([]byte, error) {
-	var result apiAnalytics
+	var result recommendationSnapshot
 	now := time.Now().In(b.config.Timezone)
 	daysSinceMonday := (int(now.Weekday()) + 6) % 7
 	weekStart := time.Date(now.Year(), now.Month(), now.Day()-daysSinceMonday, 0, 0, 0, 0, b.config.Timezone)
@@ -188,6 +194,53 @@ func (b *Bot) analyticsSnapshot(ctx context.Context, userID int64, monthParam st
 		result.MonthDays = append(result.MonthDays, apiDailyCompletion{Date: key, Count: count})
 		result.CompletedThisMonth += count
 	}
+	// Give Gemini useful personal context without forwarding free-form notes.
+	result.Tasks = make([]service.RecommendationTaskContext, 0)
+	taskRows, err := b.db.QueryContext(ctx, `SELECT h.subject, h.title, h.priority, h.deadline
+		FROM homework h LEFT JOIN homework_status s ON s.homework_id=h.id
+		WHERE h.chat_id=$1 AND COALESCE(s.is_completed,FALSE)=FALSE
+		ORDER BY h.deadline, CASE h.priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END
+		LIMIT 50`, userID)
+	if err != nil {
+		return nil, err
+	}
+	for taskRows.Next() {
+		var item service.RecommendationTaskContext
+		var deadline time.Time
+		if err := taskRows.Scan(&item.Subject, &item.Title, &item.Priority, &deadline); err != nil {
+			taskRows.Close()
+			return nil, err
+		}
+		item.Deadline = deadline.In(b.config.Timezone).Format("2006-01-02")
+		result.Tasks = append(result.Tasks, item)
+	}
+	if err := taskRows.Err(); err != nil {
+		taskRows.Close()
+		return nil, err
+	}
+	taskRows.Close()
+	result.Events = make([]service.RecommendationEventContext, 0)
+	eventRows, err := b.db.QueryContext(ctx, `SELECT title, event_at FROM calendar_events
+		WHERE chat_id=$1 AND is_completed=FALSE AND event_at >= $2 AND event_at < $3
+		ORDER BY event_at LIMIT 30`, userID, today, today.AddDate(0, 0, 14))
+	if err != nil {
+		return nil, err
+	}
+	for eventRows.Next() {
+		var item service.RecommendationEventContext
+		var at time.Time
+		if err := eventRows.Scan(&item.Title, &at); err != nil {
+			eventRows.Close()
+			return nil, err
+		}
+		item.At = at.In(b.config.Timezone).Format("2006-01-02 15:04")
+		result.Events = append(result.Events, item)
+	}
+	if err := eventRows.Err(); err != nil {
+		eventRows.Close()
+		return nil, err
+	}
+	eventRows.Close()
 	return json.Marshal(result)
 }
 
