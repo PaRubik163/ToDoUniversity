@@ -6,15 +6,18 @@ import "time"
 
 // Homework is a task owned by a Telegram user.
 type Homework struct {
-	ID           int64
-	Subject      string
-	Title        string
-	Priority     string
-	Note         string
-	Deadline     time.Time
-	ReminderDays []int
-	Completed    bool
-	CompletedAt  *time.Time
+	ID             int64
+	Subject        string
+	Title          string
+	Priority       string
+	Note           string
+	Deadline       time.Time
+	ReminderDays   []int
+	Completed      bool
+	CompletedAt    *time.Time
+	Position       int
+	Recurrence     string
+	RecurrenceDays []int
 }
 
 // CalendarDays returns the number of calendar-day boundaries between dates in
