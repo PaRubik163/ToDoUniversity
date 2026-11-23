@@ -18,4 +18,5 @@ type HomeworkRepository interface {
 	Update(ctx context.Context, userID, id int64, item domain.Homework) error
 	Delete(ctx context.Context, userID, id int64) error
 	SetCompleted(ctx context.Context, userID, id int64, completed bool) error
+	Move(ctx context.Context, userID, id int64, direction int) error
 }

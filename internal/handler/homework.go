@@ -25,25 +25,29 @@ func NewHomeworkHandler(homeworkService service.HomeworkService, timezone *time.
 }
 
 type homeworkRequest struct {
-	Subject      string `json:"subject"`
-	Title        string `json:"title"`
-	Priority     string `json:"priority"`
-	Note         string `json:"note"`
-	Deadline     string `json:"deadline"`
-	ReminderDays []int  `json:"reminder_days"`
+	Subject        string `json:"subject"`
+	Title          string `json:"title"`
+	Priority       string `json:"priority"`
+	Note           string `json:"note"`
+	Deadline       string `json:"deadline"`
+	ReminderDays   []int  `json:"reminder_days"`
+	Recurrence     string `json:"recurrence"`
+	RecurrenceDays []int  `json:"recurrence_days"`
 }
 
 type homeworkResponse struct {
-	ID           int64  `json:"id"`
-	Subject      string `json:"subject"`
-	Title        string `json:"title"`
-	Priority     string `json:"priority"`
-	Note         string `json:"note"`
-	Deadline     string `json:"deadline"`
-	ReminderDays []int  `json:"reminder_days"`
-	DaysLeft     int    `json:"days_left"`
-	Completed    bool   `json:"completed"`
-	CompletedAt  string `json:"completed_at,omitempty"`
+	ID             int64  `json:"id"`
+	Subject        string `json:"subject"`
+	Title          string `json:"title"`
+	Priority       string `json:"priority"`
+	Note           string `json:"note"`
+	Deadline       string `json:"deadline"`
+	ReminderDays   []int  `json:"reminder_days"`
+	DaysLeft       int    `json:"days_left"`
+	Completed      bool   `json:"completed"`
+	CompletedAt    string `json:"completed_at,omitempty"`
+	Recurrence     string `json:"recurrence"`
+	RecurrenceDays []int  `json:"recurrence_days"`
 }
 
 func (h *HomeworkHandler) Collection(w http.ResponseWriter, r *http.Request, userID int64) {
@@ -81,6 +85,31 @@ func (h *HomeworkHandler) Item(w http.ResponseWriter, r *http.Request, userID in
 	completedPath := strings.HasSuffix(path, "/status")
 	if completedPath {
 		path = strings.TrimSuffix(path, "/status")
+	}
+	if strings.HasSuffix(path, "/move") {
+		path = strings.TrimSuffix(path, "/move")
+		id, err := strconv.ParseInt(path, 10, 64)
+		if err != nil || id < 1 {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		if r.Method != http.MethodPut {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		var req struct {
+			Direction int `json:"direction"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+		if err := h.service.Move(r.Context(), userID, id, req.Direction); err != nil {
+			h.writeServiceError(w, "move homework", err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+		return
 	}
 	id, err := strconv.ParseInt(path, 10, 64)
 	if err != nil || id < 1 {
@@ -137,6 +166,7 @@ func (h *HomeworkHandler) present(item domain.Homework) homeworkResponse {
 		ID: item.ID, Subject: item.Subject, Title: item.Title, Priority: item.Priority, Note: item.Note,
 		Deadline: deadline.Format("2006-01-02"), ReminderDays: item.ReminderDays,
 		DaysLeft: domain.CalendarDays(now, deadline, h.timezone), Completed: item.Completed,
+		Recurrence: item.Recurrence, RecurrenceDays: item.RecurrenceDays,
 	}
 	if item.CompletedAt != nil {
 		response.CompletedAt = item.CompletedAt.In(h.timezone).Format("2006-01-02")
@@ -161,7 +191,7 @@ func (h *HomeworkHandler) internalError(w http.ResponseWriter, operation string,
 }
 
 func toInput(req homeworkRequest) service.HomeworkInput {
-	return service.HomeworkInput{Subject: req.Subject, Title: req.Title, Priority: req.Priority, Note: req.Note, Deadline: req.Deadline, ReminderDays: req.ReminderDays}
+	return service.HomeworkInput{Subject: req.Subject, Title: req.Title, Priority: req.Priority, Note: req.Note, Deadline: req.Deadline, ReminderDays: req.ReminderDays, Recurrence: req.Recurrence, RecurrenceDays: req.RecurrenceDays}
 }
 
 func writeJSON(w http.ResponseWriter, value any) {

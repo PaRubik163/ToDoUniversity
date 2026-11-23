@@ -546,8 +546,8 @@ func (b *Bot) sendDueEventReminders(ctx context.Context, now time.Time) {
 		SELECT id, chat_id, title, event_at
 		FROM calendar_events e
 		LEFT JOIN calendar_event_reminder_log l ON l.event_id = e.id
-		WHERE e.is_completed = FALSE AND e.reminder_hours > 0
-		  AND event_at - reminder_hours * interval '1 hour' <= $1
+		WHERE e.is_completed = FALSE AND e.reminder_at IS NOT NULL
+		  AND e.reminder_at <= $1
 		  AND (event_at > $1 OR l.status = 'pending')
 		  AND (l.event_id IS NULL OR (l.status = 'pending' AND l.next_attempt_at <= $1 AND (l.locked_until IS NULL OR l.locked_until < $1)))`, now)
 	if err != nil {
