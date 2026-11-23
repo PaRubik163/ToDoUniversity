@@ -131,8 +131,8 @@
     }
   };
   const extraCalendarTranslations = {
-    ru: { eventReminderAt: "Когда напомнить (необязательно)", reminderAtDisplay: "напоминание {date} в {time}", calendarToday: "Сегодня", calendarUpcoming: "Ближайшие 7 дней", calendarOverdue: "Просрочено", calendarNothingToday: "На сегодня дел нет.", calendarNothingUpcoming: "В ближайшие дни дел нет.", calendarNothingOverdue: "Просроченных задач нет." },
-    en: { eventReminderAt: "Reminder date and time (optional)", reminderAtDisplay: "reminder {date} at {time}", calendarToday: "Today", calendarUpcoming: "Next 7 days", calendarOverdue: "Overdue", calendarNothingToday: "Nothing scheduled for today.", calendarNothingUpcoming: "Nothing coming up.", calendarNothingOverdue: "No overdue tasks." },
+    ru: { eventReminderAt: "Когда напомнить (необязательно)", reminderAtDisplay: "напоминание {date} в {time}" },
+    en: { eventReminderAt: "Reminder date and time (optional)", reminderAtDisplay: "reminder {date} at {time}" },
     zh: { calendar: "日历", newEvent: "新事件", editEvent: "编辑事件", eventTitle: "事件", eventDateTime: "日期和时间", eventReminderAt: "提醒日期和时间（可选）", reminderAtDisplay: "提醒：{date} {time}", remindHours: "提前提醒（小时）", eventsForDay: "当天事件", addEvent: "+ 事件", noEvents: "这一天没有事件。", eventDelete: "删除此事件？", eventError: "保存失败：", eventDone: "完成", eventUndo: "撤销", noReminder: "不提醒", eventHourUnit: "小时" },
     es: { calendar: "Calendario", newEvent: "Nuevo evento", editEvent: "Editar evento", eventTitle: "Evento", eventDateTime: "Fecha y hora", eventReminderAt: "Fecha y hora del aviso (opcional)", reminderAtDisplay: "aviso {date} a las {time}", remindHours: "Avisar con (horas de antelación)", eventsForDay: "Eventos del día", addEvent: "+ Evento", noEvents: "No hay eventos en esta fecha.", eventDelete: "¿Eliminar este evento?", eventError: "No se pudo guardar: ", eventDone: "Hecho", eventUndo: "Deshacer", noReminder: "Sin aviso", eventHourUnit: "h" },
     ar: { calendar: "التقويم", newEvent: "حدث جديد", editEvent: "تعديل الحدث", eventTitle: "الحدث", eventDateTime: "التاريخ والوقت", eventReminderAt: "تاريخ ووقت التذكير (اختياري)", reminderAtDisplay: "تذكير {date} الساعة {time}", remindHours: "التذكير قبل (ساعات)", eventsForDay: "أحداث اليوم", addEvent: "+ حدث", noEvents: "لا توجد أحداث في هذا التاريخ.", eventDelete: "هل تريد حذف هذا الحدث؟", eventError: "تعذر الحفظ: ", eventDone: "تم", eventUndo: "تراجع", noReminder: "بدون تذكير", eventHourUnit: "س" },
@@ -215,9 +215,6 @@
   const analyticsEl = document.getElementById("analytics");
   const calendarEl = document.getElementById("calendar");
   const calendarGridEl = document.getElementById("calendar-grid");
-  const calendarTodayListEl = document.getElementById("calendar-today-list");
-  const calendarUpcomingListEl = document.getElementById("calendar-upcoming-list");
-  const calendarOverdueListEl = document.getElementById("calendar-overdue-list");
   const calendarMonthEl = document.getElementById("calendar-month");
   const calendarDayTitleEl = document.getElementById("calendar-day-title");
   const eventListEl = document.getElementById("event-list");
@@ -291,7 +288,6 @@
   let calendarMonth = new Date().getFullYear() + "-" + String(new Date().getMonth() + 1).padStart(2, "0");
   let selectedCalendarDate = new Date().getFullYear() + "-" + String(new Date().getMonth() + 1).padStart(2, "0") + "-" + String(new Date().getDate()).padStart(2, "0");
   let calendarEvents = [];
-  let calendarSummaryEvents = [];
   let editingEventId = null;
 
   if (tg) {
@@ -607,7 +603,7 @@
 
   function loadHomework() {
     setStatus(t("loading"));
-    Promise.all([apiFetch("/api/homework"), fetchAnalytics(), apiFetch("/api/settings"), fetchCalendarEvents(), fetchCurrentMonthEvents()])
+    Promise.all([apiFetch("/api/homework"), fetchAnalytics(), apiFetch("/api/settings"), fetchCalendarEvents()])
       .then(function (results) {
         homeworkItems = results[0] || [];
         language = results[2].language || telegramLanguage();
@@ -620,7 +616,6 @@
         renderCurrentSection();
         renderAnalytics(results[1] || {});
         calendarEvents = results[3] || [];
-        calendarSummaryEvents = results[4] || [];
         renderCalendar();
         setStatus("");
       })
@@ -778,18 +773,13 @@
     const d = new Date(Number(p[0]), Number(p[1]) - 1 + amount, 1);
     calendarMonth = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
     selectedCalendarDate = calendarMonth + "-01";
-    Promise.all([fetchCalendarEvents(), fetchCurrentMonthEvents()]).then(function (results) { calendarEvents = results[0] || []; calendarSummaryEvents = results[1] || []; renderCalendar(); })
+    fetchCalendarEvents().then(function (events) { calendarEvents = events || []; renderCalendar(); })
       .catch(function (err) { setStatus(t("eventError") + err.message); });
   }
 
   function fetchCalendarEvents() { return apiFetch("/api/events?month=" + encodeURIComponent(calendarMonth)); }
-  function fetchCurrentMonthEvents() {
-    const now = new Date();
-    return apiFetch("/api/events?month=" + now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0"));
-  }
 
   function renderCalendar() {
-    renderCalendarSummaries();
     const p = calendarMonth.split("-");
     const year = Number(p[0]), month = Number(p[1]) - 1;
     calendarMonthEl.textContent = new Date(year, month, 1).toLocaleDateString(languageLocale(), { month: "long", year: "numeric" });
@@ -815,38 +805,6 @@
     eventEmptyEl.textContent = t("noEvents");
     eventEmptyEl.classList.toggle("hidden", dayItems.length > 0);
     dayItems.forEach(function (item) { eventListEl.appendChild(renderCalendarEvent(item)); });
-  }
-
-  function renderCalendarSummaries() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayKey = [today.getFullYear(), String(today.getMonth() + 1).padStart(2, "0"), String(today.getDate()).padStart(2, "0")].join("-");
-    const end = new Date(today);
-    end.setDate(end.getDate() + 7);
-    const endKey = [end.getFullYear(), String(end.getMonth() + 1).padStart(2, "0"), String(end.getDate()).padStart(2, "0")].join("-");
-    const openTasks = homeworkItems.filter(function (item) { return !item.completed; });
-    const todaysTasks = openTasks.filter(function (item) { return item.deadline === todayKey; });
-    const upcomingTasks = openTasks.filter(function (item) { return item.deadline > todayKey && item.deadline <= endKey; });
-    const overdueTasks = openTasks.filter(function (item) { return item.days_left < 0; });
-    const todaysEvents = calendarSummaryEvents.filter(function (item) { return !item.completed && eventDateKey(item) === todayKey; });
-    const upcomingEvents = calendarSummaryEvents.filter(function (item) { const key = eventDateKey(item); return !item.completed && key > todayKey && key <= endKey; });
-    renderCalendarSummary(calendarTodayListEl, "calendar-today-empty", combineCalendarItems(todaysTasks, todaysEvents));
-    renderCalendarSummary(calendarUpcomingListEl, "calendar-upcoming-empty", combineCalendarItems(upcomingTasks, upcomingEvents));
-    renderCalendarSummary(calendarOverdueListEl, "calendar-overdue-empty", overdueTasks.map(function (item) { return { kind: "task", item: item, sortKey: item.deadline }; }).sort(function (a, b) { return a.sortKey.localeCompare(b.sortKey); }));
-  }
-
-  function combineCalendarItems(tasks, events) {
-    return tasks.map(function (item) { return { kind: "task", item: item, sortKey: item.deadline + "T00:00" }; })
-      .concat(events.map(function (item) { return { kind: "event", item: item, sortKey: item.event_at }; }))
-      .sort(function (a, b) { return a.sortKey.localeCompare(b.sortKey); });
-  }
-
-  function renderCalendarSummary(list, emptyId, entries) {
-    list.replaceChildren();
-    document.getElementById(emptyId).classList.toggle("hidden", entries.length > 0);
-    entries.forEach(function (entry) {
-      list.appendChild(entry.kind === "event" ? renderCalendarEvent(entry.item) : renderItem(entry.item));
-    });
   }
 
   function eventDateKey(item) {
@@ -910,7 +868,7 @@
     return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0") + "T" + String(date.getHours()).padStart(2, "0") + ":" + String(date.getMinutes()).padStart(2, "0");
   }
 
-  function refreshEvents() { return Promise.all([fetchCalendarEvents(), fetchCurrentMonthEvents()]).then(function (items) { calendarEvents = items[0] || []; calendarSummaryEvents = items[1] || []; renderCalendar(); }); }
+  function refreshEvents() { return fetchCalendarEvents().then(function (items) { calendarEvents = items || []; renderCalendar(); }); }
 
   function emptyMessage() {
     if (priorityFilter.value !== "all" || noteFilter.value.trim()) return t("noFilteredTasks");
